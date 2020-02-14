@@ -6,7 +6,7 @@
 /*  It turns on paging and maps the first 4MB of kernel at 0x800000000       */
 /*  virtual memory location. It then calls start_kernel routine from start.c */
 /*                                                                           */
-/*  Author: Shoily O Rahman                                                  */
+/*  Author: Shoily O Rahman <shoily@gmail.com>                               */
 /*                                                                           */
 /*  Date: Feb 11, 2020                                                       */
 /*                                                                           */
