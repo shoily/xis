@@ -4,7 +4,7 @@
 /*  Description: Kernel initialization code.                                 */
 /*  start_kernel routine is called from boot32.S.                            */
 /*                                                                           */
-/*  Author: Shoily O Rahman                                                  */
+/*  Author: Shoily O Rahman <shoily@gmail.com>                               */
 /*                                                                           */
 /*  Date: Feb 11, 2020                                                       */
 /*                                                                           */
