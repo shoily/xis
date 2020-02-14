@@ -6,7 +6,7 @@
 /*  copies to 0x100000 (1MB) address, turns on protected mode and jumps      */
 /*  to that address. It uses bootlds.ld to map itself at address  0x7C00     */
 /*                                                                           */
-/*  Author: Shoily O Rahman                                                  */
+/*  Author: Shoily O Rahman <shoily@gmail.com>                               */
 /*                                                                           */
 /*  Date: Feb 11, 2020                                                       */
 /*                                                                           */
