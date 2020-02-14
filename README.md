@@ -22,3 +22,6 @@ Running using QEMU -
 
 sudo qemu-system-i386 -hda hda.qcow2 -m 2 --enable-kvm -cpu host
 
+Contact -
+
+shoily@gmail.com
