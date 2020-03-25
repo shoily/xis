@@ -16,6 +16,8 @@
 
     .equ E820_MAP_ADDR, 0x1008
     .equ PROTECTED_MODE_STACK, 0xf000
+    .equ KERNEL_SIZE, 1567
+    .equ KERNEL_SECTORS, ((KERNEL_SIZE + 0x200 -1) / 0x200)
 
     // machine boots in 16bit real mode
     .code16
@@ -42,7 +44,6 @@ _start:
     movl $0xe820, %eax
     xorl %ebx, %ebx
     movl $24, %ecx
-    //movl $20, %ecx
     movl $0x534d4150, %edx
     movl $E820_MAP_ADDR, %edi
     movl $1, 20(%edi)
@@ -119,20 +120,20 @@ a20_line:
 	movw %ax, 4(%si)
 
     // read enough sectors to load kernel
-	movw $24, %ax
-	movw %ax, 2(%si)
+    movw $KERNEL_SECTORS, %ax
+    movw %ax, 2(%si)
 
-	// size of the disk packet
-	movw $0x0010, (%si)
+    // size of the disk packet
+    movw $0x0010, (%si)
 
-	// kernel is located in sector number 1. Read it.
-	movl $1, %ebx
-	movl %ebx, 8(%si)
-	movl $0, %ebx
-	movl %ebx, 12(%si)
+    // kernel is located in sector number 1. Read it.
+    movl $1, %ebx
+    movl %ebx, 8(%si)
+    movl $0, %ebx
+    movl %ebx, 12(%si)
 
-	// segment of buffer address
-	movw $0x5000, 6(%si)
+    // segment of buffer address
+    movw $0x5000, 6(%si)
 
     // set stack location at 4K offset
     movl $0x1000, %ebp
@@ -198,10 +199,10 @@ protectedmodeaddress:
 
     // copy kernel to 1 MB offset
     cld
-    movl $0x1c00, %ecx
+    movl $(KERNEL_SECTORS * 0x200 / 4), %ecx
     movl $0x50000, %esi
     movl $0x100000, %edi
-    rep movsw
+    rep movsl
 
     // call kernel at 1 MB
     movl $0x100000, %eax

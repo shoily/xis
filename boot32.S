@@ -19,21 +19,28 @@
     .equ KERNEL_PGDIR_ENTRY, (KERNEL_VIRT_ADDR >> 20)
     .equ STACK_SIZE, 0x1000
 
-    .globl boot_pg_table
     .globl _start
 _start:
 
+    // initializing kernel page directory with zero
+    movl $_kernel_pg_dir, %edi
+    movl $1024, %ecx
+    movl $0, %eax
+1:
+    stosl
+    loop 1b
+
     // populating page directory entries for identity mapping and at 0x80000000
-    movl $boot_pg_table-KERNEL_VIRT_ADDR, %edx
+    movl $_kernel_pg_table_0-KERNEL_VIRT_ADDR, %edx
     leal 0x1(%edx), %eax
-    movl %eax, boot_page_directory-KERNEL_VIRT_ADDR
-    movl %eax, boot_page_directory-KERNEL_VIRT_ADDR+KERNEL_PGDIR_ENTRY
+    movl %eax, _kernel_pg_dir-KERNEL_VIRT_ADDR
+    movl %eax, _kernel_pg_dir-KERNEL_VIRT_ADDR+KERNEL_PGDIR_ENTRY
 
     // populating page table entries that maps 4MB spaces starting from memory address 0
     cld
     movl $0x3, %eax
     movl $1024, %ecx
-    movl $boot_pg_table-KERNEL_VIRT_ADDR, %edi
+    movl $_kernel_pg_table_0-KERNEL_VIRT_ADDR, %edi
     
 1:
     stosl
@@ -41,7 +48,7 @@ _start:
     loop 1b
 
     // turning on paging
-    movl $boot_page_directory-KERNEL_VIRT_ADDR, %eax
+    movl $_kernel_pg_dir-KERNEL_VIRT_ADDR, %eax
     movl %eax, %cr3
     movl %cr0, %eax
     orl $0x80000000, %eax
@@ -53,33 +60,14 @@ _start:
 highaddress:
 
     // invalidate identity mapping
-    movl $0, boot_page_directory
+    movl $0, _kernel_pg_dir
     invlpg (0)
 
     // setting up kernel mode stack in high address
-    movl $(stack+STACK_SIZE), %esp
+    movl $(_kernel_stack_0+STACK_SIZE), %esp
     movl %esp, %ebp
 
-    // call start_kernel routine
-    pushl %ebp
     call start_kernel
 
 loop:
     jmp loop
-
-    .data
-    .p2align 12
-
-    // page table for kernel
-boot_pg_table:
-    .fill 1024, 4, 0
-
-    // page directory
-boot_page_directory:
-    .fill 1024, 4, 0
-
-    .bss
-    .p2align 5
-
-    // stack in high address
-    .lcomm stack, STACK_SIZE

@@ -24,7 +24,7 @@ int vga_buffer_line = 0;
 void print_vga(char *c, bool newline) {
 
     unsigned short *p = (unsigned short *)((char*)VIDEO_BUFFER+vga_buffer_index+(vga_buffer_line*160));
-  
+
     while(*c) {
     
         *p = ((0xF << 8) | *c);
