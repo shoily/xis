@@ -25,13 +25,11 @@ _start:
 
     // populating page directory entries for identity mapping and at 0x80000000
     movl $boot_pg_table-KERNEL_VIRT_ADDR, %edx
-    movl $boot_page_directory-KERNEL_VIRT_ADDR, %edi
     leal 0x1(%edx), %eax
-    leal KERNEL_PGDIR_ENTRY(%edi), %ecx
-	movl %eax, (%edi)
-    movl %eax, (%ecx)
+    movl %eax, boot_page_directory-KERNEL_VIRT_ADDR
+    movl %eax, boot_page_directory-KERNEL_VIRT_ADDR+KERNEL_PGDIR_ENTRY
 
-    // populating page table entries that maps 4MB spaces starting from 0x100000 (1MB)
+    // populating page table entries that maps 4MB spaces starting from memory address 0
     cld
     movl $0x3, %eax
     movl $1024, %ecx
@@ -55,7 +53,7 @@ _start:
 highaddress:
 
     // invalidate identity mapping
-    movl $0, (boot_page_directory)
+    movl $0, boot_page_directory
     invlpg (0)
 
     // setting up kernel mode stack in high address

@@ -2,9 +2,11 @@
 /*  File: bootldr.S                                                          */
 /*                                                                           */
 /*  Description: This is the boot loader. It should be written at sector 0.  */
-/*  It loads the kernel boot code from sector 1 at addres 0x7000,            */
-/*  copies to 0x100000 (1MB) address, turns on protected mode and jumps      */
-/*  to that address. It uses bootlds.ld to map itself at address  0x7C00     */
+/*  It uses bootlds.ld to map itself at address  0x7C00                      */
+/*  1. Enumerates and stores E820 map                                        */
+/*  2. Loads the kernel boot code from sector 1 at addres 0x5000             */
+/*  3. Copies to 0x100000 (1MB) address, turns on protected mode and jumps   */
+/*  to that address.                                                         */
 /*                                                                           */
 /*  Author: Shoily O Rahman <shoily@gmail.com>                               */
 /*                                                                           */
@@ -12,19 +14,97 @@
 /*                                                                           */
 /*****************************************************************************/
 
+    .equ E820_MAP_ADDR, 0x1008
+    .equ PROTECTED_MODE_STACK, 0xf000
+
     // machine boots in 16bit real mode
     .code16
     
     .text
     .globl _start
 _start:
+    movb %dl, boot_drive
+
+    // clear screen
+    movb $0, %ah
+    movb $3, %al
+    int $0x10
+
+    // reading e820 map
+    xorl %eax, %eax
+    movl %eax, %ds
+    movl %eax, %es
+    movl %eax, %ss
+
+    movl %eax, %ebp
+
+    // initializing e820 call
+    movl $0xe820, %eax
+    xorl %ebx, %ebx
+    movl $24, %ecx
+    //movl $20, %ecx
+    movl $0x534d4150, %edx
+    movl $E820_MAP_ADDR, %edi
+    movl $1, 20(%edi)
+    int $0x15
+
+    jc e820_failed
+    movl $0x534d4150, %edx
+    cmpl %eax, %edx
+    jne e820_failed
+    testl %ebx, %ebx
+    je e820_failed
+
+e820_next_entry:
+
+    //looping through e820 next entries
+    movl $24, %ecx
+    addl %ecx, %edi
+    movl $1, 20(%edi)
+
+    movl $0xe820, %eax
+    movl $0x534d4150, %edx
+    int $0x15
+
+    jc e820_done
+    jcxz e820_done
+    testl %ebx, %ebx
+    je e820_done
+    cmpl $20, %ecx
+    jne e820_failed
+
+    incl %ebp
+
+    jmp e820_next_entry
+
+e820_failed:
+
+    // write 'E' in the screen to indicate e820 error
+    movb $'E', %al
+    movb $0x0e, %ah
+    int $0x10
+
+    jmp a20_line
+
+e820_done:
+
+    // store e820 count in memory
+    movl %ebp, E820_MAP_ADDR-4
+
+    // write '8' in the screen to indicate e820 success
+    movb $'8', %al
+    movb $0x0e, %ah
+    int $0x10
+
+a20_line:
+
+    xorl %edx, %edx
+    movb boot_drive, %dl
     
     // enable A20 line    
     cli
-    push %ax
     movb $0xdd, %al
     outb %al, $0x64
-    pop %ax
     sti
 
     // read kernel from second sector    
@@ -38,8 +118,8 @@ _start:
     xorw %ax, %ax
 	movw %ax, 4(%si)
 
-    // read only one sector to load kernel
-	movw $1, %ax
+    // read enough sectors to load kernel
+	movw $24, %ax
 	movw %ax, 2(%si)
 
 	// size of the disk packet
@@ -52,7 +132,7 @@ _start:
 	movl %ebx, 12(%si)
 
 	// segment of buffer address
-	movw $0x7000, 6(%si)
+	movw $0x5000, 6(%si)
 
     // set stack location at 4K offset
     movl $0x1000, %ebp
@@ -73,7 +153,6 @@ _start:
     sti
 
     // resets disk system
-    movb %dl, boot_drive    
     int $0x13
 
     // loads gdt
@@ -113,14 +192,14 @@ protectedmodeaddress:
     movl %eax, %gs
 
     // initialize protected mode stack
-    movl protectedmodestack, %eax
+    movl PROTECTED_MODE_STACK, %eax
     movl %eax, %esp
     movl %eax, %ebp
 
     // copy kernel to 1 MB offset
     cld
-    movl $0x100, %ecx
-    movl $0x70000, %esi
+    movl $0x1c00, %ecx
+    movl $0x50000, %esi
     movl $0x100000, %edi
     rep movsw
 
@@ -131,8 +210,7 @@ protectedmodeaddress:
 loop:
     jmp loop
 
-protectedmodestack:
-    .long 0xf000
+    .data
 
 boot_drive:
     .byte 0
