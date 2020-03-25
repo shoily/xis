@@ -60,7 +60,7 @@ void itoa(int val, char *str, int base) {
     }
 }
 
-void itoll(long long val, char *str, int base) {
+void lltoa(long long val, char *str, int base) {
 	char *s, *d;
 	int len, idx;
 	int pass = 0;

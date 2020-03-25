@@ -60,11 +60,11 @@ void dump_e820() {
 
     for(i=0;i<e820_count;i++, e820++) {
         print_vga("0x", false);
-        itoll(e820->base, str, 16);
+        lltoa(e820->base, str, 16);
         print_vga(str, false);
         print_vga(" | ", false);
         print_vga("0x", false);
-        itoll(e820->length, str, 16);
+        lltoa(e820->length, str, 16);
         print_vga(str, false);
         print_vga(" | ", false);
         itoa(e820->type, str, 16);

@@ -16,6 +16,6 @@
 
 int strlen(char *p);
 void itoa(int val, char *str, int base);
-void itoll(long long val, char *str, int base);
+void lltoa(long long val, char *str, int base);
 
 #endif // _COMMON_H
