@@ -8,7 +8,7 @@ ld -static -T kernel32.ld -m elf_i386 -nostdlib --nmagic boot32.o util.o start.o
 objcopy -O binary xiskernel.elf xiskernel.bin<br>
 
 Instructions for building boot loader -<br>
-echo ".equ KERNEL_SIZE, `ls -l xiskernel.bin | cut -f5 -d\ `" > krnlsize.h<br>
+echo ".equ KERNEL_SIZE, &#96;ls -l xiskernel.bin | cut -f5 -d\ &#96;" > krnlsize.h<br>
 as --32 bootldr.S -o bootldr.o<br>
 ld -static -T bootldr.ld -m elf_i386 -nostdlib --nmagic -o bootldr.elf bootldr.o<br>
 objcopy -O binary bootldr.elf bootldr.bin<br>
