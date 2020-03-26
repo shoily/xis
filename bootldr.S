@@ -14,9 +14,9 @@
 /*                                                                           */
 /*****************************************************************************/
 
+    .include "krnlsize.h"
     .equ E820_MAP_ADDR, 0x1008
     .equ PROTECTED_MODE_STACK, 0xf000
-    .equ KERNEL_SIZE, 1567
     .equ KERNEL_SECTORS, ((KERNEL_SIZE + 0x200 -1) / 0x200)
 
     // machine boots in 16bit real mode
