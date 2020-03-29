@@ -4,7 +4,10 @@ Instructions for building kernel -<br>
 as --32 boot32.S -o boot32.o<br>
 gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c util.c -o util.o<br>
 gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c start.c -o start.o<br>
-ld -static -T kernel32.ld -m elf_i386 -nostdlib --nmagic boot32.o util.o start.o -o xiskernel.elf<br>
+gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c x86.c -o x86.o<br>
+gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c x86_32.c -o x86_32.o<br>
+
+ld -static -T kernel32.ld -m elf_i386 -nostdlib --nmagic boot32.o util.o x86.o x86_32.o start.o -o xiskernel.elf<br>
 objcopy -O binary xiskernel.elf xiskernel.bin<br>
 
 Instructions for building boot loader -<br>
