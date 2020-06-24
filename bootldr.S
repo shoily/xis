@@ -28,65 +28,6 @@
 _start:
     movb %dl, boot_drive
 
-    // initialize PIC
-
-    // mask master and slave PICs
-    movb $0xff, %al
-    outb %al, $0x21
-    outb %al, $0xa1
-
-    // init PIC1
-    movb $0x11, %al
-    outb %al, $0x20
-
-    // map vector 0x20-0x27 for IRQ 0-7
-    movb $0x20, %al
-    outb %al, $0x21
-
-    // cascade slave at IRQ 2
-    movb $0x4, %al
-    outb %al, $0x21
-
-    // Regular EOI for PIC1
-    movb $0x1, %al
-    outb %al, $0x21
-
-    // init PIC2
-    movb $0x11, %al
-    outb %al, $0xa0
-
-    // map vector 0x28-0x2f for IRQ 8-15
-    movb $0x28, %al
-    outb %al, $0xa1
-
-    // inform PIC2 that IRQ2 is the connected at PIC1
-    movb $0x2, %al
-    outb %al, $0xa1
-
-    // manual EOI for PIC2
-    movb $0x1, %al
-    outb %al, $0xa1
-
-    // small delay
-    movw $0xffff, %cx
-1:
-    loop 1b
-
-    // unmask PIC1 and PIC2
-    xorb %al, %al
-    outb %al, $0x21
-    outb %al, $0xa1
-
-    // set PIT frequency
-    cli
-    movb $0x34, %al
-    outb %al, $0x43
-    movw PIT_FREQUENCY, %ax
-    outb %al, $0x40
-    shrw $8, %ax
-    outb %al, $0x40
-    sti
-
     // clear screen
     movb $0, %ah
     movb $3, %al
