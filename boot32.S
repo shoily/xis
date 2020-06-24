@@ -17,7 +17,7 @@
 
     .equ KERNEL_VIRT_ADDR, 0x80000000
     .equ KERNEL_PGDIR_ENTRY, (KERNEL_VIRT_ADDR >> 20)
-    .equ STACK_SIZE, 0x1000
+    .equ STACK_SIZE, 0x2000
 
     .globl _start
 _start:

@@ -1,5 +1,5 @@
 /*****************************************************************************/
-/*  File: x86_32.h                                                           */
+/*  File: setup32.h                                                          */
 /*                                                                           */
 /*  Description: Header file for x86 32 bit data structure for GDT, IDT, TSS */
 /*  and related macros.                                                      */
@@ -10,8 +10,8 @@
 /*                                                                           */
 /*****************************************************************************/
 
-#ifndef _X86_32_H
-#define _X86_32_H
+#ifndef _SETUP_32_H
+#define _SETUP_32_H
 
 #define USER_CODE_SEG 0x10
 #define USER_DATA_SEG 0x18
@@ -43,8 +43,8 @@ struct gdt_entry {
 struct idt_entry {
     unsigned short offset_low;
     unsigned short segment_selector;
-    unsigned char unused;
 
+    unsigned char unused;
     unsigned char type:4;
     unsigned char s:1;
     unsigned char dpl:2;
@@ -144,6 +144,6 @@ struct tss_entry {
         SET_IDT_ENTRY(idt, index, 0, KERNEL_CODE_SEG, 0x5, 0, 1);   \
     }
 
-void start32();
+void setup32();
 
 #endif
