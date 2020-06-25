@@ -9,7 +9,7 @@ gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nosta
 gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c start.c -o start.o<br>
 
 
-ld -static -T kernel32.ld -m elf_i386 -nostdlib --nmagic boot32.o util.o x86.o x86_32.o start.o -o xiskernel.elf<br>
+ld -static -T kernel32.ld -m elf_i386 -nostdlib --nmagic boot32.o util.o system.o setup32.o handlr32.o start.o -o xiskernel.elf<br>
 objcopy -O binary xiskernel.elf xiskernel.bin<br>
 
 Instructions for building boot loader -<br>
