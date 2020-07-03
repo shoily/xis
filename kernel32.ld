@@ -5,7 +5,7 @@ ENTRY(_start)
 
 SECTIONS
 {
-    . = 0X80100000;
+    . = 0x80100000;
     .text : AT(ADDR(.text) - 0x80000000) {*(.text); }
     .data : AT(ADDR(.data) - 0x80000000) {*(.data); }
     .bss :  AT(ADDR(.bss) - 0x80000000) {*(.bss); }
@@ -14,5 +14,6 @@ SECTIONS
     _kernel_pg_dir = .;
     _kernel_pg_table_0 = _kernel_pg_dir + 0x1000;
     _kernel_stack_0 = _kernel_pg_table_0 + 0x1000;
-    _kernel_private_data = _kernel_stack_0 + 0x1000;    
+    _kernel_stack_0_start = _kernel_stack_0 + 0x2000;
+    _kernel_private_data = _kernel_stack_0_start;
 }

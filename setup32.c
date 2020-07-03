@@ -17,7 +17,7 @@
 #define UNUSED(x) (void)(x)
 
 // GDT data
-struct gdt_entry __attribute__((aligned(8))) gdt[LAST_SEG*8];
+struct gdt_entry __attribute__((aligned(8))) gdt[LAST_SEG/8];
 
 struct _gdt_desc {
     unsigned short size;
@@ -25,6 +25,9 @@ struct _gdt_desc {
 }__attribute__((packed));
 
 struct _gdt_desc __attribute__((aligned(8))) gdt_desc;
+
+// LDT data
+struct gdt_entry __attribute__((aligned(8))) ldt[2];
 
 // IDT data
 struct idt_entry __attribute__((aligned(8))) idt[256];
@@ -35,6 +38,11 @@ struct _idt_desc {
 }__attribute__((packed));
 
 struct _idt_desc __attribute__((aligned(8))) idt_desc;
+
+// TSS data
+struct tss_entry __attribute__((aligned(8))) tss;
+
+extern int _kernel_stack_0_start;
 
 void common_trap_handler();
 
@@ -58,7 +66,6 @@ void irq_handler_15();
 void trap_handler() {
 }
 
-
 __attribute__((regparm(0))) void common_interrupt_handler(int irq) {
 
     UNUSED(irq);
@@ -69,6 +76,26 @@ __attribute__((regparm(0))) void common_sys_call_handler(int syscallnr) {
     UNUSED(syscallnr);
 }
 
+// Initializes LDT for user code and data segment selectors
+void setupLDT32() {
+
+    // setup LDT data structure
+    memset(ldt, sizeof(ldt), 0);
+
+    SET_USER_CODE_SEGMENT_IN_LDT(ldt, 0xfffff, 0);
+    SET_USER_DATA_SEGMENT_IN_LDT(ldt, 0xfffff, 0);
+
+    SET_LDT_DESCRIPTOR(gdt, (sizeof(ldt)-1), (int)ldt);
+    
+    MFENCE;
+
+    __asm__ __volatile__("lldt %w0;"
+                         :
+                         : "q" (LDT_SELECTOR)
+                         :
+                         );
+}
+
 //
 // Re-initializes GDT for kernel code and data segement selectors
 //
@@ -76,8 +103,8 @@ __attribute__((regparm(0))) void common_sys_call_handler(int syscallnr) {
 void setupGDT32() {
 
     // setup GDT data structure
-    memset(gdt, sizeof(gdt), 0);
-    gdt_desc.size = sizeof(gdt) - 1;
+    memset(gdt, LAST_SEG, 0);
+    gdt_desc.size = LAST_SEG - 1;
     gdt_desc.gdt = gdt;
 
     SET_KERNEL_CODE_SEGMENT(gdt, 0xfffff, 0);
@@ -105,13 +132,33 @@ void setupGDT32() {
                          );
 }
 
+void setupTSS32() {
+
+    // setup TSS data structure
+
+    memset(&tss, sizeof(tss), 0);
+
+    tss.esp0 = (int)&_kernel_stack_0_start;
+    tss.ss0 = KERNEL_DATA_SEG;
+    tss.ldt = LDT_SELECTOR;
+
+    SET_TASK_SEGMENT(gdt, (sizeof(tss)-1), (int)&tss);
+
+    MFENCE;
+
+    __asm__ __volatile__("ltr %w0;"
+                         :
+                         : "q" (TASK_SEG)
+                         :
+                         );
+}
+
 void setupIDT32() {
 
     // setup IDT data structure
     memset(idt, sizeof(idt), 0);
     idt_desc.size = sizeof(idt) - 1;
     idt_desc.idt = idt;
-
 
     SET_TRAP_GATE(idt, 2, common_trap_handler);
 
@@ -143,7 +190,6 @@ void setupIDT32() {
                          : "m" (idt_desc)
                          : "%eax"
                          );
-
 }
 
 void setup32() {
@@ -152,7 +198,9 @@ void setup32() {
     init_pit_frequency();
 
     setupGDT32();
+    setupLDT32();
+    setupTSS32();
     setupIDT32();
 
-    print_vga("Setup GDT and IDT done", true);
+    print_vga("Setup GDT,IDT, LDT and TSS done", true);
 }

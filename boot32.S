@@ -17,7 +17,6 @@
 
     .equ KERNEL_VIRT_ADDR, 0x80000000
     .equ KERNEL_PGDIR_ENTRY, (KERNEL_VIRT_ADDR >> 20)
-    .equ STACK_SIZE, 0x2000
 
     .globl _start
 _start:
@@ -64,7 +63,7 @@ highaddress:
     invlpg (0)
 
     // setting up kernel mode stack in high address
-    movl $(_kernel_stack_0+STACK_SIZE), %esp
+    movl $(_kernel_stack_0_start), %esp
     movl %esp, %ebp
 
     call start_kernel
