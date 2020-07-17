@@ -1,4 +1,6 @@
-XIS kernel needs only 2MB of memory to run.
+XIS kernel needs only 2MB of memory to run.<br>
+
+It supports boot loader, kernel with protected mode, paging, E820 enumeration, interrupt and exception handling, system calls and user mode.
 
 Instructions for building kernel -<br>
 as --32 boot32.S -o boot32.o<br>
