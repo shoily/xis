@@ -19,7 +19,8 @@
 #define KERNEL_DATA_SEG 0x28
 #define LDT_SELECTOR 0x30
 #define TASK_SEG 0x38
-#define LAST_SEG (TASK_SEG+8)
+#define DUMMY_SEG 0x40
+#define LAST_SEG (DUMMY_SEG+8)
 
 #define USER_CODE_SEG_IN_LDT 0x0
 #define USER_DATA_SEG_IN_LDT 0x8
@@ -59,17 +60,16 @@ struct idt_entry {
 
 struct tss_entry {
     unsigned short prev_task;
-    int reserved1:16;
+    unsigned short reserved1;
     unsigned int esp0;
-    int reserved2:16;
     unsigned short ss0;
+    unsigned short reserved2;
     unsigned int esp1;
-    int reserved3:16;
     unsigned short ss1;
+    unsigned short reserved3;
     unsigned int esp2;
-    int reserved4:16;
     unsigned short ss2;
-    int reserved5:16;
+    unsigned short reserved4;
     unsigned int cr3;
     unsigned int eip;
     unsigned int eflags;
@@ -82,30 +82,30 @@ struct tss_entry {
     unsigned int esi;
     unsigned int edi;
     unsigned short es;
-    int reserved7:16;
+    unsigned short reserved5;
     unsigned short cs;
-    int reserved8:16;
+    unsigned short reserved6;
     unsigned short ss;
-    int reserved9:16;
+    unsigned short reserved7;
     unsigned short ds;
-    int reserved10:16;
+    unsigned short reserved8;
     unsigned short fs;
-    int reserved11:16;
+    unsigned short reserved9;
     unsigned short gs;
-    int reserved12:16;
+    unsigned short reserved10;
     unsigned short ldt;
-    int reserved13:16;
-    int reserved14:16;
+    unsigned short reserved11;
+    unsigned short reserved12;
     unsigned short ioremapaddr;
 }__attribute__((packed));
 
-#define SET_GDT_ENTRY(g, index, segment_limit, base_address, _type, _system, _dpl, _db) { \
+#define SET_GDT_ENTRY(g, index, segment_limit, base_address, _type, _system, _dpl, _db, _granularity) { \
         struct gdt_entry *entry = g+index;                              \
         memset(entry, sizeof(struct gdt_entry), 0);                     \
         entry->segment_limit_low = segment_limit & 0xffff;              \
         entry->segment_limit_high = (segment_limit >> 16) & 0xf;        \
         entry->base_address_low = base_address & 0xffff;                \
-        entry->base_address_mid = (base_address >> 16) & 0xf;           \
+        entry->base_address_mid = (base_address >> 16) & 0xff;          \
         entry->base_address_high = (base_address >> 24) & 0xff;         \
         entry->type = _type;                                            \
         entry->system = _system;                                        \
@@ -114,21 +114,21 @@ struct tss_entry {
         entry->avl = 0;                                                 \
         entry->l = 0;                                                   \
         entry->db = _db;                                                \
-        entry->granularity = 1;                                         \
+        entry->granularity = _granularity;                              \
     }
 
-#define SET_KERNEL_CODE_SEGMENT(g, segment_limit, base_address) SET_GDT_ENTRY(g, (KERNEL_CODE_SEG/8), segment_limit, base_address, 0xc, 1, 0, 1)
-#define SET_KERNEL_DATA_SEGMENT(g, segment_limit, base_address) SET_GDT_ENTRY(g, (KERNEL_DATA_SEG/8), segment_limit, base_address, 2, 1, 0, 1)
+#define SET_KERNEL_CODE_SEGMENT(g, segment_limit, base_address) SET_GDT_ENTRY(g, (KERNEL_CODE_SEG/8), segment_limit, base_address, 0xa, 1, 0, 1, 1)
+#define SET_KERNEL_DATA_SEGMENT(g, segment_limit, base_address) SET_GDT_ENTRY(g, (KERNEL_DATA_SEG/8), segment_limit, base_address, 2, 1, 0, 1, 1)
 
-#define SET_USER_CODE_SEGMENT(g, segment_limit, base_address) SET_GDT_ENTRY(g, (USER_CODE_SEG/8), segment_limit, base_address, 0xc, 1, 3, 1)
-#define SET_USER_DATA_SEGMENT(g, segment_limit, base_address) SET_GDT_ENTRY(g, (USER_DATA_SEG/8), segment_limit, base_address, 2, 1, 3, 1)
+#define SET_USER_CODE_SEGMENT(g, segment_limit, base_address) SET_GDT_ENTRY(g, (USER_CODE_SEG/8), segment_limit, base_address, 0xa, 1, 3, 1, 1)
+#define SET_USER_DATA_SEGMENT(g, segment_limit, base_address) SET_GDT_ENTRY(g, (USER_DATA_SEG/8), segment_limit, base_address, 2, 1, 3, 1, 1)
 
-#define SET_USER_CODE_SEGMENT_IN_LDT(l, segment_limit, base_address) SET_GDT_ENTRY(l, (USER_CODE_SEG_IN_LDT/8), segment_limit, base_address, 0xc, 1, 3, 1)
-#define SET_USER_DATA_SEGMENT_IN_LDT(l, segment_limit, base_address) SET_GDT_ENTRY(l, (USER_DATA_SEG_IN_LDT/8), segment_limit, base_address, 2, 1, 3, 1)
+#define SET_USER_CODE_SEGMENT_IN_LDT(l, segment_limit, base_address) SET_GDT_ENTRY(l, (USER_CODE_SEG_IN_LDT/8), segment_limit, base_address, 0xa, 1, 3, 1, 1)
+#define SET_USER_DATA_SEGMENT_IN_LDT(l, segment_limit, base_address) SET_GDT_ENTRY(l, (USER_DATA_SEG_IN_LDT/8), segment_limit, base_address, 2, 1, 3, 1, 1)
 
-#define SET_TASK_SEGMENT(g, segment_limit, base_address) SET_GDT_ENTRY(g, (TASK_SEG/8), segment_limit, base_address, 9, 0, 3, 0)
+#define SET_TASK_SEGMENT(g, segment_limit, base_address) SET_GDT_ENTRY(g, (TASK_SEG/8), segment_limit, base_address, 9, 0, 3, 0, 0)
 
-#define SET_LDT_DESCRIPTOR(g, segment_limit, base_address) SET_GDT_ENTRY(g, (LDT_SELECTOR/8), segment_limit, base_address, 2, 0, 3, 0)
+#define SET_LDT_DESCRIPTOR(g, segment_limit, base_address) SET_GDT_ENTRY(g, (LDT_SELECTOR/8), segment_limit, base_address, 2, 0, 3, 0, 0)
 
 #define SET_IDT_ENTRY(idt, index, offset, _segment_selector, _type, _dpl, _present) { \
         struct idt_entry *entry = idt+index;                            \
@@ -142,16 +142,37 @@ struct tss_entry {
     }
 
 #define SET_INTERRUPT_GATE(idt, index, offset) {                        \
-        SET_IDT_ENTRY(idt, index, offset, KERNEL_CODE_SEG, 0xe, 0, 1);  \
+        SET_IDT_ENTRY(idt, index, offset, KERNEL_CODE_SEG, 0xe, 3, 1);  \
     }
 
 #define SET_TRAP_GATE(idt, index, offset) {                             \
-        SET_IDT_ENTRY(idt, index, offset, KERNEL_CODE_SEG, 0xf, 0, 1);  \
+        SET_IDT_ENTRY(idt, index, offset, KERNEL_CODE_SEG, 0xf, 3, 1);  \
     }
 
 #define SET_TASK_GATE(idt, index) {                                 \
-        SET_IDT_ENTRY(idt, index, 0, KERNEL_CODE_SEG, 0x5, 0, 1);   \
+        SET_IDT_ENTRY(idt, index, 0, KERNEL_CODE_SEG, 0x5, 3, 1);   \
     }
+
+struct regs_frame {
+    unsigned int gs;
+    unsigned int fs;
+    unsigned int es;
+    unsigned int ds;
+    unsigned int edi;
+    unsigned int esi;
+    unsigned int ebp;
+    unsigned int orig_esp;
+    unsigned int ebx;
+    unsigned int edx;
+    unsigned int ecx;
+    unsigned int eax;
+    unsigned int code_nr;
+    unsigned int eip;
+    unsigned int cs;
+    unsigned int eflags;
+    unsigned int esp;
+    unsigned int ss;
+}__attribute__((packed));
 
 void setup32();
 

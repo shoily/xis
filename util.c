@@ -19,6 +19,42 @@ int strlen(char *p) {
     return len;
 }
 
+void utoa(unsigned int val, char *str, int base) {
+    char *p = str;
+    int rem;
+    char temp;
+
+    do {
+        
+        rem = val % base;
+        val /= base;
+
+        if (base == 10) {
+            *p = rem + '0';
+        } else if (base == 16) {
+
+            if (rem < 10) {
+                *p = rem + '0';
+            } else {
+                *p = rem - 10 + 'A';
+            }
+        }
+
+        p++;
+        
+    } while (val);
+
+    *p-- = 0;
+    while (p > str) {
+        temp = *p;
+        *p = *str;
+        *str = temp;
+        str++;
+        p--;
+    }
+}
+
+
 void itoa(int val, char *str, int base) {
     char *p = str;
     int rem;

@@ -15,16 +15,29 @@
 
 #include "type.h"
 
-#define VIDEO_BUFFER 0x800b8000
-#define E820_MAP_ADDRESS 0x80001008
-#define E820_MAP_COUNT 0x80001004
+#define KERNEL_VIRT_ADDR 0x80000000
+#define VIDEO_BUFFER (KERNEL_VIRT_ADDR+0xb8000)
+#define E820_MAP_ADDRESS (KERNEL_VIRT_ADDR+0x1008)
+#define E820_MAP_COUNT (KERNEL_VIRT_ADDR+0x1004)
 
-#define MFENCE  __asm__ __volatile__("mfence;"    \
-                                     :            \
-                                     :            \
-                                     : "memory"   \
-                                     );           \
+#define MFENCE __asm__ __volatile__("mfence;"    \
+                                    :            \
+                                    :            \
+                                    : "memory"   \
+                                    );           \
 
+
+#define CLI __asm__ __volatile__("cli;"       \
+                                 :            \
+                                 :            \
+                                 :            \
+                                 );           \
+
+#define STI __asm__ __volatile__("sti;"       \
+                                 :            \
+                                 :            \
+                                 :            \
+                                 );           \
 
 struct e820_map {
     unsigned long long base;

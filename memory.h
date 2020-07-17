@@ -1,22 +1,18 @@
 /*****************************************************************************/
-/*  File: common.h                                                           */
+/*  File: memory.h                                                           */
 /*                                                                           */
-/*  Description: Header file for common/utility functions                    */
+/*  Description: Header file for memory allocation code.                     */
 /*                                                                           */
 /*  Author: Shoily O Rahman <shoily@gmail.com>                               */
 /*                                                                           */
-/*  Date: Mar 15, 2020                                                       */
+/*  Date: July 9, 2020                                                       */
 /*                                                                           */
 /*****************************************************************************/
 
-#ifndef _COMMON_H
-#define _COMMON_H
+#ifndef MEMORY_H
+#define MEMORY_H
 
-#define memset(address, size, c) {for(unsigned int i=0;i<size;i++) ((char*)address)[i]=c;}
+void init_memory();
+void *alloc_mem(int size, int alignment);
 
-int strlen(char *p);
-void itoa(int val, char *str, int base);
-void utoa(unsigned int val, char *str, int base);
-void lltoa(long long val, char *str, int base);
-
-#endif // _COMMON_H
+#endif

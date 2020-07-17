@@ -40,11 +40,13 @@ struct _idt_desc {
 struct _idt_desc __attribute__((aligned(8))) idt_desc;
 
 // TSS data
-struct tss_entry __attribute__((aligned(8))) tss;
+struct tss_entry __attribute__((aligned(4096))) tss;
 
 extern int _kernel_stack_0_start;
+extern int _kernel_pg_dir;
 
 void common_trap_handler();
+void sys_call_handler_128();
 
 void irq_handler_0();
 void irq_handler_1();
@@ -63,17 +65,55 @@ void irq_handler_13();
 void irq_handler_14();
 void irq_handler_15();
 
-void trap_handler() {
+__attribute__((regparm(0))) void trap_handler(struct regs_frame *rf) {
+
+    char str[20];
+
+    print_vga("Trap handler", true);
+    
+    itoa(rf->gs, str, 16);
+    print_vga(str, true);
+
+    itoa(rf->fs, str, 16);
+    print_vga(str, true);
+
+    itoa(rf->es, str, 16);
+    print_vga(str, true);
+
+    itoa(rf->ds, str, 16);
+    print_vga(str, true);
+
+    itoa(rf->code_nr, str, 16);
+    print_vga(str, true);
+
+    itoa(rf->cs, str, 16);
+    print_vga(str, true);
+
+    itoa(rf->eip, str, 16);
+    print_vga(str, true);
+
+    itoa(rf->ss, str, 16);
+    print_vga(str, true);
+
+    itoa(rf->esp, str, 16);
+    print_vga(str, true);
+
+    __asm__ __volatile__("1: hlt; jmp 1b;" : : : );
 }
 
-__attribute__((regparm(0))) void common_interrupt_handler(int irq) {
+__attribute__((regparm(0))) void common_interrupt_handler(struct regs_frame *rf) {
 
-    UNUSED(irq);
+    UNUSED(rf);
 }
 
-__attribute__((regparm(0))) void common_sys_call_handler(int syscallnr) {
+__attribute__((regparm(0))) void common_sys_call_handler(struct regs_frame *rf) {
 
-    UNUSED(syscallnr);
+    char str[20];
+    print_vga("System call: ", false);
+    itoa(rf->code_nr, str, 16);
+    print_vga(str, true);
+    
+    UNUSED(rf);
 }
 
 // Initializes LDT for user code and data segment selectors
@@ -85,8 +125,8 @@ void setupLDT32() {
     SET_USER_CODE_SEGMENT_IN_LDT(ldt, 0xfffff, 0);
     SET_USER_DATA_SEGMENT_IN_LDT(ldt, 0xfffff, 0);
 
-    SET_LDT_DESCRIPTOR(gdt, (sizeof(ldt)-1), (int)ldt);
-    
+    SET_LDT_DESCRIPTOR(gdt, (sizeof(ldt)), (unsigned int)ldt);
+
     MFENCE;
 
     __asm__ __volatile__("lldt %w0;"
@@ -140,15 +180,14 @@ void setupTSS32() {
 
     tss.esp0 = (int)&_kernel_stack_0_start;
     tss.ss0 = KERNEL_DATA_SEG;
-    tss.ldt = LDT_SELECTOR;
 
-    SET_TASK_SEGMENT(gdt, (sizeof(tss)-1), (int)&tss);
+    SET_TASK_SEGMENT(gdt, (sizeof(tss)), (unsigned int)&tss);
 
     MFENCE;
 
     __asm__ __volatile__("ltr %w0;"
                          :
-                         : "q" (TASK_SEG)
+                         : "q" (TASK_SEG | 3)
                          :
                          );
 }
@@ -160,7 +199,20 @@ void setupIDT32() {
     idt_desc.size = sizeof(idt) - 1;
     idt_desc.idt = idt;
 
+    SET_TRAP_GATE(idt, 0, common_trap_handler);
+    SET_TRAP_GATE(idt, 1, common_trap_handler);
     SET_TRAP_GATE(idt, 2, common_trap_handler);
+    SET_TRAP_GATE(idt, 4, common_trap_handler);
+    SET_TRAP_GATE(idt, 5, common_trap_handler);
+    SET_TRAP_GATE(idt, 6, common_trap_handler);
+    SET_TRAP_GATE(idt, 7, common_trap_handler);
+    SET_TRAP_GATE(idt, 8, common_trap_handler);
+    SET_TRAP_GATE(idt, 9, common_trap_handler);
+    SET_TRAP_GATE(idt, 10, common_trap_handler);
+    SET_TRAP_GATE(idt, 11, common_trap_handler);
+    SET_TRAP_GATE(idt, 12, common_trap_handler);
+    SET_TRAP_GATE(idt, 13, common_trap_handler);
+    SET_TRAP_GATE(idt, 14, common_trap_handler);
 
     SET_INTERRUPT_GATE(idt, 32, irq_handler_0);
     SET_INTERRUPT_GATE(idt, 33, irq_handler_1);
@@ -179,13 +231,14 @@ void setupIDT32() {
     SET_INTERRUPT_GATE(idt, 46, irq_handler_14);
     SET_INTERRUPT_GATE(idt, 47, irq_handler_15);
 
+    SET_TRAP_GATE(idt, 128, sys_call_handler_128);
+
     MFENCE;
 
     // Initialize IDT
     __asm__ __volatile__("movl $%0, %%eax;"
                          "lidt (%%eax);"
                          "sti;"
-                         ";"
                          :
                          : "m" (idt_desc)
                          : "%eax"
@@ -199,8 +252,8 @@ void setup32() {
 
     setupGDT32();
     setupLDT32();
-    setupTSS32();
     setupIDT32();
+    setupTSS32();
 
     print_vga("Setup GDT,IDT, LDT and TSS done", true);
 }

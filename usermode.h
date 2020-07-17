@@ -1,22 +1,22 @@
 /*****************************************************************************/
-/*  File: common.h                                                           */
+/*  File: usermode.c                                                         */
 /*                                                                           */
-/*  Description: Header file for common/utility functions                    */
+/*  Description: Header file for user mode process support.                  */
 /*                                                                           */
 /*  Author: Shoily O Rahman <shoily@gmail.com>                               */
 /*                                                                           */
-/*  Date: Mar 15, 2020                                                       */
+/*  Date: July 7, 2020                                                       */
 /*                                                                           */
 /*****************************************************************************/
 
-#ifndef _COMMON_H
-#define _COMMON_H
+#ifndef _USERMODE_H
+#define _USERMODE_H
 
-#define memset(address, size, c) {for(unsigned int i=0;i<size;i++) ((char*)address)[i]=c;}
+#define USER_MODE_VIRT_TEXT  0x10000000
+#define USER_MODE_VIRT_STACK 0x10003000
 
-int strlen(char *p);
-void itoa(int val, char *str, int base);
-void utoa(unsigned int val, char *str, int base);
-void lltoa(long long val, char *str, int base);
 
-#endif // _COMMON_H
+
+void initialize_usermode();
+
+#endif

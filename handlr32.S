@@ -14,7 +14,7 @@
 
     .globl common_trap_handler
     
-    .globl system_call_handler_3
+    .globl sys_call_handler_128
 
     .globl irq_handler_0
     .globl irq_handler_1
@@ -38,8 +38,21 @@
     .macro DEFINE_IRQ_HANDLER irqn
     
     irq_handler_\irqn:
-
+    pushl $\irqn
     pusha
+
+    push %ds
+    push %es
+    push %fs
+    push %gs
+    
+    movl %esp, %ebp
+
+    movl $0x28, %eax 
+    movl %eax, %ds
+    movl %eax, %es
+    movl %eax, %fs
+    movl %eax, %gs
 
     movb $0x20,%al
     
@@ -52,11 +65,18 @@
     
     outb %al,$0x20
 
-    push $\irqn    
+    push %ebp
     call common_interrupt_handler
     addl $4, %esp
 
+    pop %gs
+    pop %fs
+    pop %es
+    pop %ds
+
     popa
+
+    addl $4, %esp
 
     iret
     
@@ -68,10 +88,35 @@
 
     sys_call_handler_\syscallnr:
     pushl $\syscallnr
+    pusha
+
+    push %ds
+    push %es
+    push %fs
+    push %gs
+    
+    movl %esp, %ebp
+    
+    movl $0x28, %eax 
+    movl %eax, %ds
+    movl %eax, %es
+    movl %eax, %fs
+    movl %eax, %gs
+
+    push %ebp
     call common_sys_call_handler
     addl $4, %esp
 
+    pop %gs
+    pop %fs
+    pop %es
+    pop %ds
+
     popa
+
+    addl $4, %esp
+
+    iret
     
     .endm
 
@@ -95,14 +140,34 @@
     DEFINE_IRQ_HANDLER 15
 
     // define system call handlers
-    DEFINE_SYS_CALL_HANDLER 3
+    DEFINE_SYS_CALL_HANDLER 128
     
     
 common_trap_handler:
-    pushl $0
-    pushl $0
+    pusha
 
+    push %ds
+    push %es
+    push %fs
+    push %gs
+    
+    movl %esp, %ebp
+
+    movl $0x28, %eax 
+    movl %eax, %ds
+    movl %eax, %es
+    movl %eax, %fs
+    movl %eax, %gs
+
+    push %ebp
     call trap_handler
+    addl $4, %esp
 
-    addl $8,%esp
+    pop %gs
+    pop %fs
+    pop %es
+    pop %ds
+    
+    popa
+
     iret

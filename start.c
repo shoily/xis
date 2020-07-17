@@ -14,6 +14,8 @@
 #include "util.h"
 #include "system.h"
 #include "setup32.h"
+#include "memory.h"
+#include "usermode.h"
 
 //
 //  Start kernel routine
@@ -25,6 +27,8 @@ int start_kernel(void) {
     print_vga("", true);
     dump_e820();
     setup32();
+    init_memory();
+    initialize_usermode();
 
     return 0;
 }
