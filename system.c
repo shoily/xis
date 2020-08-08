@@ -26,6 +26,8 @@ void print_vga(char *c, bool newline) {
     unsigned short *p = (unsigned short *)((char*)VIDEO_BUFFER+vga_buffer_index+(vga_buffer_line*160));
 
     while(*c) {
+
+        if (vga_buffer_line > 25) break;
     
         *p = ((0xF << 8) | *c);
         c++;
@@ -94,7 +96,8 @@ void init_pic_8259() {
                          "outb %%al, $0xa1;"
                          "movb $0x1, %%al;"   // manual EOI for PIC2
                          "outb %%al, $0xa1;"
-                         "movw $0xffff, %%cx;"  // small delay
+                         "xorl %%ecx, %%ecx;"
+                         "movl $0xf000000, %%ecx;"  // small delay
                          "1:;"
                          "loop 1b;"
                          "xorb %%al, %%al;"    // unmask PIC1 and PIC2
@@ -102,20 +105,63 @@ void init_pic_8259() {
                          "outb %%al, $0xa1;"
                          :
                          :
-                         : "%eax"
+                         : "%eax", "%ecx"
                          );
 }
 
 void init_pit_frequency() {
 
-    __asm__ __volatile__("movb $0x34, %%al;"
-                         "outb %%al, $0x43;"
+    __asm__ __volatile__("movb $0x34, %%al;"  // PIT channel 0 and rate generator
+                         "outb %%al, $0x43;"  // writing to command register
                          "movw %0, %%ax;"
-                         "outb %%al, $0x40;"
-                         "shrw $8, %%ax;"
-                         "outb %%al, $0x40;"
+                         "outb %%al, $0x40;"  // writing low byte of frequency divisor 
+                         "rolw $8, %%ax;"
+                         "outb %%al, $0x40;"  // then high byte
                          :
                          : "i" (PIT_FREQUENCY)
                          : "%eax"
                          );
+}
+
+extern int sched_tick;
+
+
+void pit_wait(int cycles) {
+
+    int status_reg = 0;
+    int counter = 0;
+
+    // uses PIT channel 2 and mode 0 to wait for cycles.
+
+    __asm__ __volatile__("cli;"
+                         "movb $0xb0, %%al;"   // PIT channel 2 and mode 0
+                         "outb %%al, $0x43;"   // writing to command register
+                         "movw %w0, %%ax;"
+                         "outb %%al, $0x42;"   // low byte to channel 2
+                         "rolw $8, %%ax;"
+                         "outb %%al, $0x42;"   // then high byte
+                         "1:"
+                         "cli;"
+                         "movb $0xe8, %%al;"   // read back for status
+                         "outb %%al, $0x43;"   // writing to command register
+                         "inb $0x42, %%al;"    // read status from channel 2
+                         "movb %%al, %b1;"
+                         "andb $0x80, %%al;"   // check if GATE is high
+                         "sti;"
+                         "jnz 1f;"
+                         "nop;nop;nop;nop;"    // give chance to PIC to handle interrupts
+                         "incl %2;"            // loop count - for debugging purpose
+                         "jmp 1b;"
+                         "1:"
+                         : "=r"(counter), "=r"(status_reg)
+                         : "0"(cycles)
+                         : "%eax"
+                         );
+
+#ifdef DEBUG
+    CLI;
+    print_msg("status_reg", status_reg, 16, false);
+    print_msg("counter", counter, 10, true);
+    STI;
+#endif
 }

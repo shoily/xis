@@ -50,5 +50,6 @@ void dump_e820();
 void print_vga(char *c, bool newline);
 void init_pic_8259();
 void init_pit_frequency();
+void pit_wait(int cycles);
 
 #endif

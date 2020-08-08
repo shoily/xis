@@ -9,6 +9,9 @@
 /*                                                                           */
 /*****************************************************************************/
 
+#include "type.h"
+#include "system.h"
+
 int strlen(char *p) {
     int len = 0;
     
@@ -19,57 +22,22 @@ int strlen(char *p) {
     return len;
 }
 
-void utoa(unsigned int val, char *str, int base) {
-    char *p = str;
-    int rem;
-    char temp;
-
-    do {
-        
-        rem = val % base;
-        val /= base;
-
-        if (base == 10) {
-            *p = rem + '0';
-        } else if (base == 16) {
-
-            if (rem < 10) {
-                *p = rem + '0';
-            } else {
-                *p = rem - 10 + 'A';
-            }
-        }
-
-        p++;
-        
-    } while (val);
-
-    *p-- = 0;
-    while (p > str) {
-        temp = *p;
-        *p = *str;
-        *str = temp;
-        str++;
-        p--;
-    }
-}
-
-
 void itoa(int val, char *str, int base) {
     char *p = str;
     int rem;
     char temp;
+    unsigned int value = (unsigned int)val;
 
-    if (val < 0) {
-        val = -val;
+    if (base == 10 && val < 0) {
+        value = (unsigned int)-val;
         *p++ = '-';
         str++;
     }
 
     do {
-        
-        rem = val % base;
-        val /= base;
+
+        rem = value % base;
+        value /= base;
 
         if (base == 10) {
             *p = rem + '0';
@@ -84,7 +52,7 @@ void itoa(int val, char *str, int base) {
 
         p++;
         
-    } while (val);
+    } while (value);
 
     *p-- = 0;
     while (p > str) {
@@ -101,7 +69,7 @@ void lltoa(long long val, char *str, int base) {
 	int len, idx;
 	int pass = 0;
 
-	if (val < 0) {
+	if (base ==10 && val < 0) {
 		str[0] = 0;
 		return;
 	}
@@ -139,4 +107,17 @@ void lltoa(long long val, char *str, int base) {
 	}
 
 	str[16] = 0;
+}
+
+void print_msg(char *msg, int info, int base, bool newline) {
+
+    char str[20];
+
+    print_vga(msg, false);
+    print_vga(": ", false);
+    itoa((unsigned int)info, str, base);
+    print_vga(str, newline);
+    if (!newline) {
+        print_vga(" ", false);
+    }
 }

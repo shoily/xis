@@ -13,8 +13,7 @@
 #include "util.h"
 #include "system.h"
 #include "setup32.h"
-
-#define UNUSED(x) (void)(x)
+#include "apic.h"
 
 // GDT data
 struct gdt_entry __attribute__((aligned(8))) gdt[LAST_SEG/8];
@@ -42,8 +41,12 @@ struct _idt_desc __attribute__((aligned(8))) idt_desc;
 // TSS data
 struct tss_entry __attribute__((aligned(4096))) tss;
 
+int sched_tick = 0;
+
 extern int _kernel_stack_0_start;
 extern int _kernel_pg_dir;
+
+extern int lapic_present;
 
 void common_trap_handler();
 void sys_call_handler_128();
@@ -64,6 +67,9 @@ void irq_handler_12();
 void irq_handler_13();
 void irq_handler_14();
 void irq_handler_15();
+
+void lapic_irq_handler_1();
+
 
 __attribute__((regparm(0))) void trap_handler(struct regs_frame *rf) {
 
@@ -103,17 +109,15 @@ __attribute__((regparm(0))) void trap_handler(struct regs_frame *rf) {
 
 __attribute__((regparm(0))) void common_interrupt_handler(struct regs_frame *rf) {
 
-    UNUSED(rf);
+    if (rf->code_nr == 0) {
+
+        sched_tick++;
+    }
 }
 
 __attribute__((regparm(0))) void common_sys_call_handler(struct regs_frame *rf) {
 
-    char str[20];
-    print_vga("System call: ", false);
-    itoa(rf->code_nr, str, 16);
-    print_vga(str, true);
-    
-    UNUSED(rf);
+    print_msg("System call", rf->code_nr, 16, true);
 }
 
 // Initializes LDT for user code and data segment selectors
@@ -199,21 +203,6 @@ void setupIDT32() {
     idt_desc.size = sizeof(idt) - 1;
     idt_desc.idt = idt;
 
-    SET_TRAP_GATE(idt, 0, common_trap_handler);
-    SET_TRAP_GATE(idt, 1, common_trap_handler);
-    SET_TRAP_GATE(idt, 2, common_trap_handler);
-    SET_TRAP_GATE(idt, 4, common_trap_handler);
-    SET_TRAP_GATE(idt, 5, common_trap_handler);
-    SET_TRAP_GATE(idt, 6, common_trap_handler);
-    SET_TRAP_GATE(idt, 7, common_trap_handler);
-    SET_TRAP_GATE(idt, 8, common_trap_handler);
-    SET_TRAP_GATE(idt, 9, common_trap_handler);
-    SET_TRAP_GATE(idt, 10, common_trap_handler);
-    SET_TRAP_GATE(idt, 11, common_trap_handler);
-    SET_TRAP_GATE(idt, 12, common_trap_handler);
-    SET_TRAP_GATE(idt, 13, common_trap_handler);
-    SET_TRAP_GATE(idt, 14, common_trap_handler);
-
     SET_INTERRUPT_GATE(idt, 32, irq_handler_0);
     SET_INTERRUPT_GATE(idt, 33, irq_handler_1);
     SET_INTERRUPT_GATE(idt, 34, irq_handler_2);
@@ -231,6 +220,21 @@ void setupIDT32() {
     SET_INTERRUPT_GATE(idt, 46, irq_handler_14);
     SET_INTERRUPT_GATE(idt, 47, irq_handler_15);
 
+    SET_TRAP_GATE(idt, 0, common_trap_handler);
+    SET_TRAP_GATE(idt, 1, common_trap_handler);
+    SET_TRAP_GATE(idt, 2, common_trap_handler);
+    SET_TRAP_GATE(idt, 4, common_trap_handler);
+    SET_TRAP_GATE(idt, 5, common_trap_handler);
+    SET_TRAP_GATE(idt, 6, common_trap_handler);
+    SET_TRAP_GATE(idt, 7, common_trap_handler);
+    SET_TRAP_GATE(idt, 8, common_trap_handler);
+    SET_TRAP_GATE(idt, 9, common_trap_handler);
+    SET_TRAP_GATE(idt, 10, common_trap_handler);
+    SET_TRAP_GATE(idt, 11, common_trap_handler);
+    SET_TRAP_GATE(idt, 12, common_trap_handler);
+    SET_TRAP_GATE(idt, 13, common_trap_handler);
+    SET_TRAP_GATE(idt, 14, common_trap_handler);
+
     SET_TRAP_GATE(idt, 128, sys_call_handler_128);
 
     MFENCE;
@@ -238,7 +242,6 @@ void setupIDT32() {
     // Initialize IDT
     __asm__ __volatile__("movl $%0, %%eax;"
                          "lidt (%%eax);"
-                         "sti;"
                          :
                          : "m" (idt_desc)
                          : "%eax"
@@ -247,13 +250,20 @@ void setupIDT32() {
 
 void setup32() {
 
-    init_pic_8259();
-    init_pit_frequency();
-
     setupGDT32();
     setupLDT32();
+
+    if (!lapic_present) {
+        init_pic_8259();
+        init_pit_frequency();
+    }
+
+    init_lapic();
+
     setupIDT32();
     setupTSS32();
+
+    STI;
 
     print_vga("Setup GDT,IDT, LDT and TSS done", true);
 }
