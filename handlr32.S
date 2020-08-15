@@ -48,8 +48,6 @@
     push %es
     push %fs
     push %gs
-    
-    movl %esp, %ebp
 
     movl $0x28, %eax 
     movl %eax, %ds
@@ -59,6 +57,7 @@
 
     sti
 
+    movl %esp, %ebp
     push %ebp
     call common_interrupt_handler
     addl $4, %esp
@@ -146,6 +145,7 @@
     
     
 common_trap_handler:
+    cli
     pusha
 
     push %ds
@@ -171,6 +171,7 @@ common_trap_handler:
     pop %ds
     
     popa
+    sti
 
     iret
 

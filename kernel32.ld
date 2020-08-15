@@ -12,6 +12,9 @@ SECTIONS
     . = ALIGN(4096);
     .um : AT(ADDR(.um) - 0x80000000) {*(.um);}
     um_size = SIZEOF(um);
+    . = ALIGN(4096);
+    .mp_init : AT(ADDR(.mp_init) - 0x80000000) {*(.mp_init);}
+    mp_init_size = SIZEOF(mp_init);
     .kernel_data ALIGN(4096) : AT(ADDR(.kernel_data) - 0x80000000) {*(.kernel_data); }
     . = ALIGN(4096);
     _kernel_pg_dir = .;

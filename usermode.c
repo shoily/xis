@@ -19,7 +19,7 @@ char __attribute__((aligned(4096))) um_pg_table[4096];
 char __attribute__((aligned(4096))) user_mode_program[4096];
 
 #define USER_MODE_STACK_SIZE 8192
-char user_mode_stack[USER_MODE_STACK_SIZE];
+char __attribute__((aligned(8))) user_mode_stack[USER_MODE_STACK_SIZE];
 
 extern int um, um_size;
 extern int _kernel_pg_dir;
@@ -45,8 +45,6 @@ void load_usermode_function(char *usermodefunction) {
     for(i=(int)&um;i<(int)&um+(int)&um_size;i++) {
         *d++ = *s++;
     }
-
-    print_vga("User mode progam copied", true);
 }
 
 void switch_to_um() {
@@ -89,6 +87,4 @@ void initialize_usermode() {
     MFENCE;
     
     switch_to_um();
-    
-    print_vga("Test", true);
 }

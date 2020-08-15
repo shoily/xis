@@ -21,21 +21,23 @@
 #define LAPIC_PPR 0xa0
 #define LAPIC_EOI_REG 0xb0
 #define LAPIC_SPURIOUS_REG 0xf0
-#define ISR_0_31 0x100
-#define TMR_0_31 0x180
-#define IRR_0_31 0x200
-#define ERROR_STATUS_REG 0x280
-#define ICR_1 0x300
-#define ICR_2 0x310
-#define LVT_TIMER_REG 0x320
-#define LVT_LINT_0_REG 0x350
-#define LVT_LINT_1_REG 0x360
-#define LVT_ERROR_REG 0x370
-#define INITIAL_COUNTER_REG 0x380
-#define CURRENT_COUNTER_REG 0x390
-#define DIVIDE_CONFIGURATION_REG 0x3e0
+#define LAPIC_ISR_0_31 0x100
+#define LAPIC_TMR_0_31 0x180
+#define LAPIC_IRR_0_31 0x200
+#define LAPIC_ERROR_STATUS_REG 0x280
+#define LAPIC_ICR_1 0x300
+#define LAPIC_ICR_2 0x310
+#define LAPIC_LVT_TIMER_REG 0x320
+#define LAPIC_LVT_LINT_0_REG 0x350
+#define LAPIC_LVT_LINT_1_REG 0x360
+#define LAPIC_LVT_ERROR_REG 0x370
+#define LAPIC_INITIAL_COUNTER_REG 0x380
+#define LAPIC_CURRENT_COUNTER_REG 0x390
+#define LAPIC_DIVIDE_CONFIGURATION_REG 0x3e0
 
 void init_lapic();
 void lapic_switch(bool enable);
+int read_lapic_register(int lapic_register);
+void write_lapic_register(int lapic_register, int value);
 
 #endif

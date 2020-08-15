@@ -18,7 +18,6 @@
     .equ E820_MAP_ADDR, 0x1008
     .equ PROTECTED_MODE_STACK, 0xf000
     .equ KERNEL_SECTORS, ((KERNEL_SIZE + 0x200 -1) / 0x200)
-    .equ PIT_FREQUENCY, 1000
 
     // machine boots in 16bit real mode
     .code16
@@ -206,7 +205,7 @@ protectedmodeaddress:
     movl %eax, %gs
 
     // initialize protected mode stack
-    movl PROTECTED_MODE_STACK, %eax
+    movl $PROTECTED_MODE_STACK, %eax
     movl %eax, %esp
     movl %eax, %ebp
 

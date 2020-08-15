@@ -14,6 +14,7 @@
 #include "system.h"
 #include "setup32.h"
 #include "apic.h"
+#include "smp.h"
 
 // GDT data
 struct gdt_entry __attribute__((aligned(8))) gdt[LAST_SEG/8];
@@ -68,41 +69,22 @@ void irq_handler_13();
 void irq_handler_14();
 void irq_handler_15();
 
+void lapic_irq_handler_0();
 void lapic_irq_handler_1();
-
 
 __attribute__((regparm(0))) void trap_handler(struct regs_frame *rf) {
 
-    char str[20];
-
     print_vga("Trap handler", true);
     
-    itoa(rf->gs, str, 16);
-    print_vga(str, true);
-
-    itoa(rf->fs, str, 16);
-    print_vga(str, true);
-
-    itoa(rf->es, str, 16);
-    print_vga(str, true);
-
-    itoa(rf->ds, str, 16);
-    print_vga(str, true);
-
-    itoa(rf->code_nr, str, 16);
-    print_vga(str, true);
-
-    itoa(rf->cs, str, 16);
-    print_vga(str, true);
-
-    itoa(rf->eip, str, 16);
-    print_vga(str, true);
-
-    itoa(rf->ss, str, 16);
-    print_vga(str, true);
-
-    itoa(rf->esp, str, 16);
-    print_vga(str, true);
+    print_msg("gs", rf->gs, 16, false);
+    print_msg("fs", rf->fs, 16, false);
+    print_msg("es", rf->es, 16, false);
+    print_msg("ds", rf->ds, 16, false);
+    print_msg("code_nr", rf->code_nr, 16, false);
+    print_msg("cs", rf->cs, 16, false);
+    print_msg("eip", rf->eip, 16, false);
+    print_msg("ss", rf->ss, 16, false);
+    print_msg("esp", rf->esp, 16, false);
 
     __asm__ __volatile__("1: hlt; jmp 1b;" : : : );
 }
@@ -253,15 +235,15 @@ void setup32() {
     setupGDT32();
     setupLDT32();
 
-    if (!lapic_present) {
-        init_pic_8259();
-        init_pit_frequency();
-    }
-
     init_lapic();
+
+    init_pic_8259();
+    init_pit_frequency();
 
     setupIDT32();
     setupTSS32();
+
+    smp_start();
 
     STI;
 

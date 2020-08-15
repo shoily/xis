@@ -10,6 +10,11 @@
 /*                                                                           */
 /*****************************************************************************/
 
+//
+// Reserved memory aside from E820
+//
+// 
+
 #include "system.h"
 #include "util.h"
 
@@ -33,7 +38,7 @@ void print_vga(char *c, bool newline) {
         c++;
         vga_buffer_index += 2;
         p++;
-        if (vga_buffer_index > 160) {
+        if (vga_buffer_index == 160) {
             vga_buffer_line++;
             vga_buffer_index = 0;
         }

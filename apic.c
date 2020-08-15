@@ -78,7 +78,7 @@ void init_lapic() {
     print_msg("Local APIC id", lapic_id, 16, true);
 
     // enable receiving interrupt
-    //write_lapic_register(LAPIC_SPURIOUS_REG, read_lapic_register(LAPIC_SPURIOUS_REG)| 0x100);
+    write_lapic_register(LAPIC_SPURIOUS_REG, read_lapic_register(LAPIC_SPURIOUS_REG)| 0x100);
 }
 
 void lapic_switch(bool enable) {
