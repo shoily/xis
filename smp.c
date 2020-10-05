@@ -31,8 +31,6 @@ void copy_smp_init_to_low_mem() {
 
 void smp_start() {
 
-    int status;
-
     copy_smp_init_to_low_mem();
 
     // initialize AP processor count with 0
@@ -44,24 +42,12 @@ void smp_start() {
     // send INIT IPI to APs
     write_lapic_register(LAPIC_ICR_1, 0x000c4500);
     write_lapic_register(LAPIC_ICR_2, 0);
-    for(int i=0;i<10;i++) {
-        status = read_lapic_register(LAPIC_ICR_1) & 0x1000;
-        if (!status)
-            break;
-        pit_wait(0xffff);
-    }
+    pit_wait_ms(10);
 
     // send Startup IPI to APs
     write_lapic_register(LAPIC_ICR_1, 0x000c4600 | (AP_INIT_PHYS_TEXT >> 12));
     write_lapic_register(LAPIC_ICR_2, 0);
-    for(int i=0;i<30;i++) {
-        status = read_lapic_register(LAPIC_ICR_1) & 0x1000;
-        if (!status)
-            break;
-        pit_wait(0xffff);
-    }
-
-    pit_wait(0xffff);
+    pit_wait_ms(200);
 
     print_msg("Number of APs", *(int*)(AP_COUNT_PHYS_ADDR+KERNEL_VIRT_ADDR), 10, true);
 }

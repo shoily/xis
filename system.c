@@ -50,6 +50,25 @@ void print_vga(char *c, bool newline) {
     }
 }
 
+void print_vga_fixed(char *c, int col, int row) {
+
+    unsigned short *p = (unsigned short *)((char*)VIDEO_BUFFER+col+(row*160));
+
+    while(*c) {
+
+        if (row > 25) break;
+    
+        *p = ((0xF << 8) | *c);
+        c++;
+        col += 2;
+        p++;
+        if (col == 160) {
+            row++;
+            col = 0;
+        }
+    }
+}
+
 //
 // Dumps E820 map
 //
@@ -78,6 +97,16 @@ void dump_e820() {
         print_vga(str, false);
         print_vga((e820->type == 1) ? " Free memory" : " Reserved memory", true);
     }
+}
+
+void mask_pic_8259() {
+
+    __asm__ __volatile__("movb $0xff, %%al;"  // mask master and slave PICs
+                         "outb %%al, $0x21;"
+                         "outb %%al, $0xa1;"
+                         :
+                         :
+                         : );
 }
 
 void init_pic_8259() {
@@ -151,7 +180,7 @@ void pit_wait(int cycles) {
                          "outb %%al, $0x43;"   // writing to command register
                          "inb $0x42, %%al;"    // read status from channel 2
                          "movb %%al, %b1;"
-                         "andb $0x80, %%al;"   // check if GATE is high
+                         "andb $0x80, %%al;"   // check if OUT is high
                          "sti;"
                          "jnz 1f;"
                          "nop;nop;nop;nop;"    // give chance to PIC to handle interrupts
@@ -169,4 +198,12 @@ void pit_wait(int cycles) {
     print_msg("counter", counter, 10, true);
     STI;
 #endif
+}
+
+void pit_wait_ms(int ms) {
+
+    for(int i = 0; i < ms; i++) {
+
+        pit_wait(PIT_HZ);
+    }
 }

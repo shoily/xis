@@ -89,11 +89,22 @@ __attribute__((regparm(0))) void trap_handler(struct regs_frame *rf) {
     __asm__ __volatile__("1: hlt; jmp 1b;" : : : );
 }
 
+int lapic_calibration_tick = 0;
+bool lapic_calibration_mode = false;
+bool lapic_timer_enabled = false;
+
 __attribute__((regparm(0))) void common_interrupt_handler(struct regs_frame *rf) {
 
     if (rf->code_nr == 0) {
 
         sched_tick++;
+
+        if (lapic_calibration_mode) {
+
+            lapic_calibration_tick++;
+            
+        } else if (lapic_timer_enabled) {
+        }
     }
 }
 
@@ -230,18 +241,25 @@ void setupIDT32() {
                          );
 }
 
+void set_idt(int vector, idt_function_type idt_function) {
+
+    SET_INTERRUPT_GATE(idt, vector, idt_function);
+}
+
 void setup32() {
 
     setupGDT32();
     setupLDT32();
-
-    init_lapic();
-
-    init_pic_8259();
-    init_pit_frequency();
-
     setupIDT32();
     setupTSS32();
+
+    mask_pic_8259();
+    init_lapic();
+
+    if (!lapic_present) {
+        init_pic_8259();
+        init_pit_frequency();
+    }
 
     smp_start();
 

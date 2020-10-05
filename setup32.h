@@ -174,6 +174,9 @@ struct regs_frame {
     unsigned int ss;
 }__attribute__((packed));
 
+typedef void (*idt_function_type)();
+
 void setup32();
+void set_idt(int vector, idt_function_type idt_function);
 
 #endif

@@ -12,6 +12,8 @@
 #include "apic.h"
 #include "page32.h"
 #include "util.h"
+#include "system.h"
+#include "setup32.h"
 
 int lapic_present = 0;
 int lapic_base_register;
@@ -39,6 +41,33 @@ int read_lapic_register(int lapic_register) {
 void write_lapic_register(int lapic_register, int value) {
     
     *((int*)(lapic_base_register+lapic_register)) = value;
+}
+
+extern int lapic_calibration_tick;
+extern bool lapic_calibration_mode;
+extern bool lapic_timer_enabled;
+
+void lapic_irq_handler_0();
+
+void calibrate_lapic_timer() {
+
+    CLI;
+    write_lapic_register(LAPIC_LVT_TIMER_REG, 32 | 0x20000); // Periodic timer on vector 32.
+    write_lapic_register(LAPIC_DIVIDE_CONFIGURATION_REG, 0xa); // Divide by 128
+    set_idt(32, lapic_irq_handler_0);
+
+    STI;
+    lapic_calibration_mode = true;
+    write_lapic_register(LAPIC_INITIAL_COUNTER_REG, 1024);
+    pit_wait_ms(1);
+    write_lapic_register(LAPIC_INITIAL_COUNTER_REG, 0);
+    lapic_calibration_mode = false;
+    CLI;
+    print_msg("lapic_calibration_tick", lapic_calibration_tick, 10, true);
+
+    //STI;
+    lapic_timer_enabled = true;
+    write_lapic_register(LAPIC_INITIAL_COUNTER_REG, 1024);
 }
 
 void init_lapic() {
@@ -79,6 +108,8 @@ void init_lapic() {
 
     // enable receiving interrupt
     write_lapic_register(LAPIC_SPURIOUS_REG, read_lapic_register(LAPIC_SPURIOUS_REG)| 0x100);
+
+    calibrate_lapic_timer();
 }
 
 void lapic_switch(bool enable) {

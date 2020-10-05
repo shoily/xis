@@ -20,6 +20,9 @@
 #define E820_MAP_ADDRESS (KERNEL_VIRT_ADDR+0x1008)
 #define E820_MAP_COUNT (KERNEL_VIRT_ADDR+0x1004)
 
+#define PIT_CRYSTAL_FREQUENCY 1193182
+#define PIT_HZ (PIT_CRYSTAL_FREQUENCY/1000)
+
 #define MFENCE __asm__ __volatile__("mfence;"    \
                                     :            \
                                     :            \
@@ -48,8 +51,11 @@ struct e820_map {
 
 void dump_e820();
 void print_vga(char *c, bool newline);
+void mask_pic_8259();
 void init_pic_8259();
 void init_pit_frequency();
 void pit_wait(int cycles);
+void pit_wait_ms(int ms);
+void print_vga_fixed(char *c, int col, int row);
 
 #endif
