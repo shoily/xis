@@ -174,7 +174,7 @@ a20_line:
     cli
 
     // jump to protected mode
-    ljmpl $0x8,$protectedmodeaddress
+    ljmpl *segmentoffsetvalue
 
 lba_read_error:
     
@@ -186,7 +186,7 @@ lba_read_error:
 
 kernel_too_big:
     // write 'B' in the screen to indicate kernel too big
-    movb $'X', %al
+    movb $'B', %al
     movb $0x0e, %ah
     int $0x10
     jmp loop
@@ -196,8 +196,7 @@ kernel_too_big:
     
 protectedmodeaddress:
 
-    // data descriptor is located in 0x10 location of GDT
-    movl $0x10, %eax
+    movl $data_seg, %eax
     movl %eax, %ds
     movl %eax, %es
     movl %eax, %ss
@@ -264,6 +263,10 @@ end_of_gdt:
 gdtdescriptor:
     .word end_of_gdt-gdt-1
     .long gdt
+
+segmentoffsetvalue:
+    .long protectedmodeaddress
+    .word code_seg
 
     .equ code_seg, code_seg_addr-gdt
     .equ data_seg, data_seg_addr-gdt
