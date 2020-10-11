@@ -3,12 +3,18 @@
 It supports boot loader, kernel with protected mode, paging, E820 enumeration, interrupt and exception handling, system calls, user mode, local APIC and multiprocessor.
 
 <b>Instructions for building kernel -</b><br>
+cat krnlconst.hdr | awk 'BEGIN{print "#ifndef _KERNEL_CONST_H"};{print "#define " $1 " " $2};END{print "#endif";}' > krnlconst.h<br>
+cat krnlconst.hdr | awk '{print ".equ " $1 ", " $2};' > krnlconst.S<br>
+
+as --32 mpinit.S -o mpinit.o<br>
+ld -static -T mpinit.ld -m elf_i386 -nostdlib --nmagic -o mpinit.elf mpinit.o<br>
+objcopy -O binary mpinit.elf mpinit.bin<br>
+
 as --32 boot32.S -o boot32.o<br>
 gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c util.c -o util.o<br>
 gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c system.c -o system.o<br>
 gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c apic.c -o apic.o<br>
 as --32 handlr32.S -o handlr32.o<br>
-as --32 mpinit.S -o mpinit.o<br>
 gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c smp.c -o smp.o<br>
 gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c setup32.c -o setup32.o<br>
 gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c start.c -o start.o<br>
@@ -17,7 +23,7 @@ gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nosta
 gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c usermode.c -o usermode.o<br>
 
 
-ld -static -T kernel32.ld -m elf_i386 -nostdlib --nmagic boot32.o util.o system.o apic.o mpinit.o smp.o setup32.o handlr32.o memory.o page32.o usermode.o start.o -o xiskernel.elf<br>
+ld -static -T kernel32.ld -m elf_i386 -nostdlib --nmagic boot32.o util.o system.o apic.o smp.o setup32.o handlr32.o memory.o page32.o usermode.o start.o -o xiskernel.elf<br>
 objcopy -O binary xiskernel.elf xiskernel.bin<br>
 
 <b>Instructions for building boot loader -</b><br>

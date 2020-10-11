@@ -12,19 +12,27 @@
 #include "util.h"
 #include "system.h"
 #include "apic.h"
+#include "krnlconst.h"
 
-#define AP_INIT_PHYS_TEXT 0xf000
-#define AP_COUNT_PHYS_ADDR 0xfff8
+#define AP_INIT_PHYS_TEXT 0x7c00
 
-extern int mp_init_size;
 extern int init_ap;
+extern int init_ap_size;
+
+extern int lapic_base_register;
+
+extern int _kernel_stack_ap_start;
+extern int _kernel_pg_dir;
+extern int _kernel_pg_table_0;
 
 void copy_smp_init_to_low_mem() {
 
     char *s = (char*)&init_ap;
     char *d = (char*)(AP_INIT_PHYS_TEXT+KERNEL_VIRT_ADDR);
 
-    for(int i=0;i<(int)&mp_init_size;i++) {
+    print_msg("init_ap_size", (int)init_ap_size, 10, true);
+
+    for(int i=0;i<(int)init_ap_size;i++) {
         *d++ = *s++;
     }
 }
@@ -36,6 +44,14 @@ void smp_start() {
     // initialize AP processor count with 0
     // it will be increased by AP startup code
     *(int*)(AP_COUNT_PHYS_ADDR+KERNEL_VIRT_ADDR) = 0;
+    *(int*)(AP_FIRST_STACK+KERNEL_VIRT_ADDR) = (int)&_kernel_stack_ap_start;
+    *(int*)(AP_LAPIC_BASE_REGISTER+KERNEL_VIRT_ADDR) = (int)&lapic_base_register;
+    *(int*)(AP_KERNEL_PG_DIR+KERNEL_VIRT_ADDR) = (((int)&_kernel_pg_dir)-KERNEL_VIRT_ADDR);
+
+    // identity mapping to enable APs to use paging.
+    // It needs to be cleared after APs are initialized or it usermode programs
+    // sharing this page directory cannot access first 4MB virtual memory.
+    ((int*)&_kernel_pg_dir)[0] = (((int)&_kernel_pg_table_0) - KERNEL_VIRT_ADDR) | 3;
 
     MFENCE;
 

@@ -28,7 +28,7 @@ int vga_buffer_line = 0;
 //
 void print_vga(char *c, bool newline) {
 
-    unsigned short *p = (unsigned short *)((char*)VIDEO_BUFFER+vga_buffer_index+(vga_buffer_line*160));
+    unsigned short *p = (unsigned short *)((char*)VIDEO_VIRT_BUFFER+vga_buffer_index+(vga_buffer_line*160));
 
     while(*c) {
 
@@ -52,7 +52,7 @@ void print_vga(char *c, bool newline) {
 
 void print_vga_fixed(char *c, int col, int row) {
 
-    unsigned short *p = (unsigned short *)((char*)VIDEO_BUFFER+col+(row*160));
+    unsigned short *p = (unsigned short *)((char*)VIDEO_VIRT_BUFFER+col+(row*160));
 
     while(*c) {
 
@@ -75,8 +75,8 @@ void print_vga_fixed(char *c, int col, int row) {
 void dump_e820() {
 
     int i;
-    int e820_count= *((int *) E820_MAP_COUNT);
-    struct e820_map *e820 = (struct e820_map *) E820_MAP_ADDRESS;
+    int e820_count= *((int *) E820_MAP_VIRT_COUNT);
+    struct e820_map *e820 = (struct e820_map *) E820_MAP_VIRT_ADDRESS;
     char str[17];
 
     print_vga("E820 map", true);

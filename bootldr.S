@@ -14,9 +14,8 @@
 /*                                                                           */
 /*****************************************************************************/
 
-    .include "krnlsize.h"
-    .equ E820_MAP_ADDR, 0x1008
-    .equ PROTECTED_MODE_STACK, 0xf000
+    .include "krnlsize.S"
+    .include "krnlconst.S"
     .equ KERNEL_SECTORS, ((KERNEL_SIZE + 0x200 -1) / 0x200)
 
     // machine boots in 16bit real mode
@@ -45,7 +44,7 @@ _start:
     xorl %ebx, %ebx
     movl $24, %ecx
     movl $0x534d4150, %edx
-    movl $E820_MAP_ADDR, %edi
+    movl $E820_MAP_ADDRESS, %edi
     movl $1, 20(%edi)
     int $0x15
 
@@ -90,7 +89,7 @@ e820_failed:
 e820_done:
 
     // store e820 count in memory
-    movl %ebp, E820_MAP_ADDR-4
+    movl %ebp, E820_MAP_COUNT
 
     // write '8' in the screen to indicate e820 success
     movb $'8', %al
@@ -174,7 +173,7 @@ a20_line:
     cli
 
     // jump to protected mode
-    ljmpl *segmentoffsetvalue
+    ljmpl *codesegaddr
 
 lba_read_error:
     
@@ -264,7 +263,7 @@ gdtdescriptor:
     .word end_of_gdt-gdt-1
     .long gdt
 
-segmentoffsetvalue:
+codesegaddr:
     .long protectedmodeaddress
     .word code_seg
 

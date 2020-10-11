@@ -13,14 +13,15 @@
 #ifndef _SETUP_32_H
 #define _SETUP_32_H
 
+#define NUM_SMPS 32
+
 #define USER_CODE_SEG 0x10
 #define USER_DATA_SEG 0x18
 #define KERNEL_CODE_SEG 0x20
 #define KERNEL_DATA_SEG 0x28
 #define LDT_SELECTOR 0x30
 #define TASK_SEG 0x38
-#define DUMMY_SEG 0x40
-#define LAST_SEG (DUMMY_SEG+8)
+#define LAST_SEG (TASK_SEG+(NUM_SMPS*8))
 
 #define USER_CODE_SEG_IN_LDT 0x0
 #define USER_DATA_SEG_IN_LDT 0x8

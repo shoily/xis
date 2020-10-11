@@ -70,3 +70,16 @@ highaddress:
 
 loop:
     jmp loop
+
+    .section mp_init, "ax"
+    .global init_ap
+    .align 8
+init_ap:
+    .incbin "mpinit.bin"
+
+    .global init_ap_size
+    .align 8
+    .global init_ap_size
+
+init_ap_size:
+    .int init_ap_size - init_ap
