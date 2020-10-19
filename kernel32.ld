@@ -17,7 +17,6 @@ SECTIONS
     _kernel_pg_table_0 = _kernel_pg_dir + 0x1000;
     _kernel_stack_0 = _kernel_pg_table_0 + 0x1000;
     _kernel_stack_0_start = _kernel_stack_0 + 0x2000;
-    _kernel_stack_ap_start = _kernel_stack_0_start + (0x2000 * 32);
-    _kernel_private_data = _kernel_stack_0_start + 8;
+    _kernel_private_data = _kernel_stack_0_start + (0x2000 * 32);
     _kernel_heap_start = (_kernel_private_data + 0x1000) & ~(0xfff);
 }

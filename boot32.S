@@ -15,7 +15,7 @@
     .code32
     .text
 
-    .equ KERNEL_VIRT_ADDR, 0x80000000
+    .include "krnlconst.S"
     .equ KERNEL_PGDIR_ENTRY, (KERNEL_VIRT_ADDR >> 20)
 
     .globl _start

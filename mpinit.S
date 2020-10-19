@@ -38,7 +38,7 @@ _start:
     cli
 
     // jump to protected mode
-    ljmpl *codesegaddr
+    ljmpl *protectmodecodesegaddr
 
     // protected mode code
     .code32
@@ -52,7 +52,6 @@ protectedmodeaddress:
     movl %eax, %fs
     movl %eax, %gs
 
-
     // turning on paging
     movl AP_KERNEL_PG_DIR, %eax
     movl %eax, %cr3
@@ -60,21 +59,42 @@ protectedmodeaddress:
     orl $0x80000000, %eax
     movl %eax, %cr0
 
-    lock incw AP_COUNT_PHYS_ADDR+KERNEL_VIRT_ADDR
-
-    hlt
+    ljmpl *highcodesegaddr
 
     .code32
     .section ".high", "ax"
 
 highaddress:
 
-    // initialize protected mode stack
-    movl $PROTECTED_MODE_STACK, %eax
-    movl %eax, %esp
-    movl %eax, %ebp
+    // get LAPIC id
+    movl AP_LAPIC_BASE_REGISTER, %ebx
+    addl $0x20, %ebx
+    movl (%ebx), %eax
+    shrl $24, %eax
+    movl %eax, %ecx
 
-    hlt
+    // calculate start of kernel mode stack for this processor
+    movl $0x2000, %ebx
+    mull %ebx
+    movl AP_FIRST_STACK, %ebx
+    addl %ebx, %eax
+
+    // initialize protected mode stack
+    movl %eax, %esp
+    movl %esp, %ebp
+
+    pushl %ecx
+
+    // increment AP count
+    lock incw AP_COUNT_PHYS_ADDR+KERNEL_VIRT_ADDR
+
+    movl AP_FINISH_CODE+KERNEL_VIRT_ADDR, %eax
+
+    // call finish_mp_initialization
+    call *%eax
+
+loop:
+    jmp loop
 
     .data
     // global descriptor table (GDT)
@@ -103,8 +123,12 @@ data_seg_addr:
 
 end_of_gdt: 
 
-codesegaddr:
+protectmodecodesegaddr:
     .long protectedmodeaddress
+    .word code_seg
+
+highcodesegaddr:
+    .long highaddress
     .word code_seg
 
 gdtdescriptor:
