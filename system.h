@@ -15,6 +15,9 @@
 
 #include "type.h"
 #include "krnlconst.h"
+#include "apic.h"
+
+#define MAX_NUM_SMPS 32
 
 #define VIDEO_VIRT_BUFFER (KERNEL_VIRT_ADDR+VIDEO_BUFFER)
 #define E820_MAP_VIRT_ADDRESS (KERNEL_VIRT_ADDR+E820_MAP_ADDRESS)
@@ -42,6 +45,10 @@
                                  :            \
                                  );           \
 
+extern int lapic_present;
+
+#define CUR_CPU (lapic_present ? (lapic_read_register(LAPIC_ID_REG) >> 24) : 0)
+
 struct e820_map {
     unsigned long long base;
     unsigned long long length;
@@ -50,12 +57,13 @@ struct e820_map {
 }__attribute__((packed));
 
 void dump_e820();
-void print_vga(char *c, bool newline);
 void mask_pic_8259();
 void init_pic_8259();
 void init_pit_frequency();
 void pit_wait(int cycles);
 void pit_wait_ms(int ms);
+void vga_init();
+void print_vga(char *c, bool newline);
 void print_vga_fixed(char *c, int col, int row);
 
 #endif

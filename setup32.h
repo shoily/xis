@@ -13,15 +13,13 @@
 #ifndef _SETUP_32_H
 #define _SETUP_32_H
 
-#define NUM_SMPS 32
-
 #define USER_CODE_SEG 0x10
 #define USER_DATA_SEG 0x18
 #define KERNEL_CODE_SEG 0x20
 #define KERNEL_DATA_SEG 0x28
 #define LDT_SELECTOR 0x30
-#define TASK_SEG 0x38
-#define LAST_SEG (TASK_SEG+(NUM_SMPS*8))
+#define FIRST_TASK_SEG 0x38
+#define LAST_SEG (FIRST_TASK_SEG+(MAX_NUM_SMPS*8))
 
 #define USER_CODE_SEG_IN_LDT 0x0
 #define USER_DATA_SEG_IN_LDT 0x8
@@ -127,7 +125,7 @@ struct tss_entry {
 #define SET_USER_CODE_SEGMENT_IN_LDT(l, segment_limit, base_address) SET_GDT_ENTRY(l, (USER_CODE_SEG_IN_LDT/8), segment_limit, base_address, 0xa, 1, 3, 1, 1)
 #define SET_USER_DATA_SEGMENT_IN_LDT(l, segment_limit, base_address) SET_GDT_ENTRY(l, (USER_DATA_SEG_IN_LDT/8), segment_limit, base_address, 2, 1, 3, 1, 1)
 
-#define SET_TASK_SEGMENT(g, segment_limit, base_address) SET_GDT_ENTRY(g, (TASK_SEG/8), segment_limit, base_address, 9, 0, 3, 0, 0)
+#define SET_TASK_SEGMENT(g, segment_limit, base_address, segment) SET_GDT_ENTRY(g, (segment/8), segment_limit, base_address, 9, 0, 3, 0, 0)
 
 #define SET_LDT_DESCRIPTOR(g, segment_limit, base_address) SET_GDT_ENTRY(g, (LDT_SELECTOR/8), segment_limit, base_address, 2, 0, 3, 0, 0)
 
@@ -179,5 +177,11 @@ typedef void (*idt_function_type)();
 
 void setup32();
 void set_idt(int vector, idt_function_type idt_function);
+
+void loadGDT32();
+void loadLDT32();
+void loadIDT32();
+void initializeTSS32(int smp_id);
+void loadTSS32(int smp_id);
 
 #endif

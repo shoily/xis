@@ -33,12 +33,12 @@ void read_msr(int msr, int *eax, int *edx) {
                          : );
 }
 
-int read_lapic_register(int lapic_register) {
+int lapic_read_register(int lapic_register) {
     
     return *((int*)(lapic_base_register+lapic_register));
 }
 
-void write_lapic_register(int lapic_register, int value) {
+void lapic_write_register(int lapic_register, int value) {
     
     *((int*)(lapic_base_register+lapic_register)) = value;
 }
@@ -51,28 +51,24 @@ void lapic_irq_handler_0();
 
 void calibrate_lapic_timer() {
 
-    CLI;
-    write_lapic_register(LAPIC_LVT_TIMER_REG, 32 | 0x20000); // Periodic timer on vector 32.
-    write_lapic_register(LAPIC_DIVIDE_CONFIGURATION_REG, 0xa); // Divide by 128
-    set_idt(32, lapic_irq_handler_0);
+	lapic_write_register(LAPIC_LVT_TIMER_REG, LAPIC_IDT_VECTOR | 0x20000); // Periodic timer on vector 32.
+    lapic_write_register(LAPIC_DIVIDE_CONFIGURATION_REG, LAPIC_DIVIDE_CONFIG_VALUE); // Divide by 128
+    set_idt(LAPIC_IDT_VECTOR, lapic_irq_handler_0);
 
-    STI;
     lapic_calibration_mode = true;
-    write_lapic_register(LAPIC_INITIAL_COUNTER_REG, 1024);
+    lapic_write_register(LAPIC_INITIAL_COUNTER_REG, LAPIC_COUNTER_VALUE);
     pit_wait_ms(1);
-    write_lapic_register(LAPIC_INITIAL_COUNTER_REG, 0);
+	CLI;
+    lapic_write_register(LAPIC_INITIAL_COUNTER_REG, 0);
     lapic_calibration_mode = false;
-    CLI;
-    print_msg("lapic_calibration_tick", lapic_calibration_tick, 10, true);
-
-    //STI;
-    lapic_timer_enabled = true;
-    write_lapic_register(LAPIC_INITIAL_COUNTER_REG, 1024);
+	lapic_timer_enabled = true;
+    STI;
+	lapic_write_register(LAPIC_INITIAL_COUNTER_REG, LAPIC_COUNTER_VALUE);
 }
 
 void init_lapic() {
 
-    int eax, edx;  
+    int eax, edx;
     pte_t *pgtable[1];
 
     __asm__ __volatile__("movl $1, %%eax;"
@@ -102,12 +98,12 @@ void init_lapic() {
     
     print_msg("Local APIC address", eax, 16, false);
 
-    lapic_id = read_lapic_register(LAPIC_ID_REG) >> 24;
+    lapic_id = lapic_read_register(LAPIC_ID_REG) >> 24;
 
     print_msg("Local APIC id", lapic_id, 16, true);
 
     // enable receiving interrupt
-    write_lapic_register(LAPIC_SPURIOUS_REG, read_lapic_register(LAPIC_SPURIOUS_REG)| 0x100);
+    lapic_write_register(LAPIC_SPURIOUS_REG, lapic_read_register(LAPIC_SPURIOUS_REG)| 0x100);
 
     calibrate_lapic_timer();
 }
@@ -116,13 +112,13 @@ void lapic_switch(bool enable) {
     
     int value;
     
-    value = read_lapic_register(LAPIC_SPURIOUS_REG);
+    value = lapic_read_register(LAPIC_SPURIOUS_REG);
     if (enable)
         value |= 0x1ff;
     else
         value &= ~0x1ff;
 
-    print_msg("lapic_switch", value, 16, true);
+    //print_msg("lapic_switch", value, 16, true);
     
-    write_lapic_register(LAPIC_SPURIOUS_REG, value);
+    lapic_write_register(LAPIC_SPURIOUS_REG, value);
 }

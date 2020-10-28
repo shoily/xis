@@ -35,9 +35,14 @@
 #define LAPIC_CURRENT_COUNTER_REG 0x390
 #define LAPIC_DIVIDE_CONFIGURATION_REG 0x3e0
 
+#define LAPIC_IDT_VECTOR 32
+#define LAPIC_DIVIDE_CONFIG_VALUE 10
+#define LAPIC_COUNTER_VALUE 1024
+
 void init_lapic();
 void lapic_switch(bool enable);
-int read_lapic_register(int lapic_register);
-void write_lapic_register(int lapic_register, int value);
+int lapic_read_register(int lapic_register);
+void lapic_write_register(int lapic_register, int value);
+void lapic_enable_timer();
 
 #endif

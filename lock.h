@@ -12,13 +12,13 @@
 #ifndef _LOCK_H
 #define _LOCK_H
 
-typedef struct _spin_lock {
+typedef struct _spinlock {
     int val;
-} spin_lock;
+} spinlock;
 
-#define INIT_SPIN_LOCK(spinlock) memset(spinlock, sizeof(spin_lock), 0)
+#define INIT_SPIN_LOCK(lock) memset(lock, sizeof(spinlock), 0)
 
-void spinlock_lock(spin_lock *lock);
-void spinlock_unlock(spin_lock *lock);
+void spinlock_lock(spinlock *lock);
+void spinlock_unlock(spinlock *lock);
 
 #endif

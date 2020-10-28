@@ -35,8 +35,6 @@ _start:
     orl $1, %eax
     movl %eax, %cr0
 
-    cli
-
     // jump to protected mode
     ljmpl *protectmodecodesegaddr
 
@@ -52,9 +50,31 @@ protectedmodeaddress:
     movl %eax, %fs
     movl %eax, %gs
 
+    // get LAPIC id
+    movl AP_LAPIC_BASE_REGISTER, %ebx
+    addl $0x20, %ebx
+    movl (%ebx), %eax
+    shrl $24, %eax
+    movl %eax, %ecx
+
+    // calculate start of kernel mode stack for this processor
+    movl $KERNEL_STACK_SIZE, %ebx
+    mull %ebx
+    movl AP_FIRST_STACK, %ebx
+    addl %ebx, %eax
+
+    // initialize protected mode stack
+    movl %eax, %esp
+    movl %esp, %ebp
+
     // turning on paging
-    movl AP_KERNEL_PG_DIR, %eax
+    movl %ecx, %eax
+    movl $PAGE_SIZE, %ebx
+    mull %ebx
+    movl AP_KERNEL_PG_DIR, %ebx
+    addl %ebx, %eax
     movl %eax, %cr3
+
     movl %cr0, %eax
     orl $0x80000000, %eax
     movl %eax, %cr0
@@ -66,28 +86,8 @@ protectedmodeaddress:
 
 highaddress:
 
-    // get LAPIC id
-    movl AP_LAPIC_BASE_REGISTER, %ebx
-    addl $0x20, %ebx
-    movl (%ebx), %eax
-    shrl $24, %eax
-    movl %eax, %ecx
-
-    // calculate start of kernel mode stack for this processor
-    movl $0x2000, %ebx
-    mull %ebx
-    movl AP_FIRST_STACK, %ebx
-    addl %ebx, %eax
-
-    // initialize protected mode stack
-    movl %eax, %esp
-    movl %esp, %ebp
-
+    // push lapic id in the stack
     pushl %ecx
-
-    // increment AP count
-    lock incw AP_COUNT_PHYS_ADDR+KERNEL_VIRT_ADDR
-
     movl AP_FINISH_CODE+KERNEL_VIRT_ADDR, %eax
 
     // call finish_mp_initialization

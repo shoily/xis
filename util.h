@@ -14,7 +14,8 @@
 
 #include "type.h"
 
-#define memset(address, size, c) {for(unsigned int i=0;i<size;i++) ((char*)address)[i]=c;}
+#define memset(address, size, c) {for(int i=0;i<(int)size;i++) ((char*)address)[i]=c;}
+#define memcpy(dest, src, size) {for(int i=0;i<size;i++) ((char*)dest)[i]=((char*)src)[i];}
 
 #define UNUSED(x) (void)(x)
 

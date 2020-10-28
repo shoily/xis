@@ -40,9 +40,9 @@ struct _idt_desc {
 struct _idt_desc __attribute__((aligned(8))) idt_desc;
 
 // TSS data
-struct tss_entry __attribute__((aligned(4096))) tss;
+struct tss_entry __attribute__((aligned(4096))) tss[MAX_NUM_SMPS];
 
-int sched_tick = 0;
+int sched_tick[MAX_NUM_SMPS];
 
 extern int _kernel_stack_0_start;
 extern int _kernel_pg_dir;
@@ -72,8 +72,11 @@ void irq_handler_15();
 void lapic_irq_handler_0();
 void lapic_irq_handler_1();
 
+#define DEBUG_TRAP 1
+
 __attribute__((regparm(0))) void trap_handler(struct regs_frame *rf) {
 
+#ifdef DEBUG_TRAP
     print_vga("Trap handler", true);
     
     print_msg("gs", rf->gs, 16, false);
@@ -85,6 +88,9 @@ __attribute__((regparm(0))) void trap_handler(struct regs_frame *rf) {
     print_msg("eip", rf->eip, 16, false);
     print_msg("ss", rf->ss, 16, false);
     print_msg("esp", rf->esp, 16, false);
+#else
+	UNUSED(rf);
+#endif
 
     __asm__ __volatile__("1: hlt; jmp 1b;" : : : );
 }
@@ -93,28 +99,48 @@ int lapic_calibration_tick = 0;
 bool lapic_calibration_mode = false;
 bool lapic_timer_enabled = false;
 
+#ifdef DEBUG_TIMER
+int timer_counter[MAX_NUM_SMPS];
+int seconds[MAX_NUM_SMPS];
+#endif
+
 __attribute__((regparm(0))) void common_interrupt_handler(struct regs_frame *rf) {
 
     if (rf->code_nr == 0) {
 
-        sched_tick++;
+		sched_tick[CUR_CPU]++;
 
         if (lapic_calibration_mode) {
 
             lapic_calibration_tick++;
             
         } else if (lapic_timer_enabled) {
+#ifdef DEBUG_TIMER
+			char s[20];
+			timer_counter[CUR_CPU]++;
+			if (timer_counter[CUR_CPU] >= (1000*lapic_calibration_tick)) {
+				timer_counter[CUR_CPU] = 0;
+				seconds[CUR_CPU]++;
+
+				itoa(seconds[CUR_CPU], s, 10);
+				print_vga_fixed(s, 140, 5+CUR_CPU);
+			}
+#endif
         }
     }
 }
 
 __attribute__((regparm(0))) void common_sys_call_handler(struct regs_frame *rf) {
 
-    print_msg("System call", rf->code_nr, 16, true);
+#ifdef DEBUG_SYSCALL
+    print_msg("System call", rf->code_nr | CUR_CPU, 16, true);
+#else
+	UNUSED(rf);
+#endif
 }
 
 // Initializes LDT for user code and data segment selectors
-void setupLDT32() {
+void initializeLDT32() {
 
     // setup LDT data structure
     memset(ldt, sizeof(ldt), 0);
@@ -123,10 +149,11 @@ void setupLDT32() {
     SET_USER_DATA_SEGMENT_IN_LDT(ldt, 0xfffff, 0);
 
     SET_LDT_DESCRIPTOR(gdt, (sizeof(ldt)), (unsigned int)ldt);
+}
 
-    MFENCE;
+void loadLDT32() {
 
-    __asm__ __volatile__("lldt %w0;"
+	__asm__ __volatile__("lldt %w0;"
                          :
                          : "q" (LDT_SELECTOR)
                          :
@@ -137,7 +164,7 @@ void setupLDT32() {
 // Re-initializes GDT for kernel code and data segement selectors
 //
 
-void setupGDT32() {
+void initializeGDT32() {
 
     // setup GDT data structure
     memset(gdt, LAST_SEG, 0);
@@ -149,10 +176,10 @@ void setupGDT32() {
     
     SET_USER_CODE_SEGMENT(gdt, 0xfffff, 0);
     SET_USER_DATA_SEGMENT(gdt, 0xfffff, 0);
+}
 
-    MFENCE;
+void loadGDT32() {
 
-    // Re-initialize GDT
     __asm__ __volatile__("movl $%0, %%eax;"
                          "lgdt (%%eax);"
                          "ljmpl %1, $reinitsegs;"
@@ -169,27 +196,29 @@ void setupGDT32() {
                          );
 }
 
-void setupTSS32() {
+void initializeTSS32(int smp_id) {
 
     // setup TSS data structure
 
-    memset(&tss, sizeof(tss), 0);
+    memset(&tss[smp_id], sizeof(struct tss_entry), 0);
 
-    tss.esp0 = (int)&_kernel_stack_0_start;
-    tss.ss0 = KERNEL_DATA_SEG;
+    tss[smp_id].esp0 = ((int)&_kernel_stack_0_start)+(smp_id*KERNEL_STACK_SIZE);
+    tss[smp_id].ss0 = KERNEL_DATA_SEG;
 
-    SET_TASK_SEGMENT(gdt, (sizeof(tss)), (unsigned int)&tss);
-
-    MFENCE;
-
-    __asm__ __volatile__("ltr %w0;"
-                         :
-                         : "q" (TASK_SEG | 3)
-                         :
-                         );
+    SET_TASK_SEGMENT(gdt, (sizeof(struct tss_entry)), (unsigned int)&tss[smp_id], (FIRST_TASK_SEG+(smp_id*8)));
 }
 
-void setupIDT32() {
+void loadTSS32(int smp_id) {
+
+	__asm__ __volatile__("ltr %w0;"
+                         :
+                         : "q" ((FIRST_TASK_SEG+(smp_id*8)) | 3)
+                         :
+                         );
+
+}
+
+void initializeIDT32() {
 
     // setup IDT data structure
     memset(idt, sizeof(idt), 0);
@@ -229,11 +258,12 @@ void setupIDT32() {
     SET_TRAP_GATE(idt, 14, common_trap_handler);
 
     SET_TRAP_GATE(idt, 128, sys_call_handler_128);
+}
 
-    MFENCE;
+void loadIDT32() {
 
-    // Initialize IDT
-    __asm__ __volatile__("movl $%0, %%eax;"
+	// load IDT
+	__asm__ __volatile__("movl $%0, %%eax;"
                          "lidt (%%eax);"
                          :
                          : "m" (idt_desc)
@@ -248,10 +278,16 @@ void set_idt(int vector, idt_function_type idt_function) {
 
 void setup32() {
 
-    setupGDT32();
-    setupLDT32();
-    setupIDT32();
-    setupTSS32();
+	memset(sched_tick, sizeof(sched_tick), 0);
+
+    initializeGDT32();
+	loadGDT32();
+    initializeLDT32();
+	loadLDT32();
+    initializeIDT32();
+	loadIDT32();
+    initializeTSS32(0);
+	loadTSS32(0);
 
     mask_pic_8259();
     init_lapic();
@@ -260,8 +296,6 @@ void setup32() {
         init_pic_8259();
         init_pit_frequency();
     }
-
-    smp_start();
 
     STI;
 

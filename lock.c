@@ -11,7 +11,7 @@
 
 #include "lock.h"
 
-void spinlock_lock(spin_lock *lock) {
+void spinlock_lock(spinlock *lock) {
     
     __asm__ __volatile__("movl $1, %%eax;"
                          "1:;"
@@ -23,7 +23,7 @@ void spinlock_lock(spin_lock *lock) {
                          : "%eax", "%ebx", "cc", "memory" );
 }
 
-void spinlock_unlock(spin_lock *lock) {
+void spinlock_unlock(spinlock *lock) {
 
     __asm__ __volatile__("movl $0, %0;"
                          : "=m" (lock->val)

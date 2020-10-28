@@ -14,8 +14,6 @@
 typedef int pte_t;
 typedef int pgd_t;
 
-#define PAGE_SIZE 4096
-
 #define PGD_PRESENT   1
 #define PGD_WRITE     2
 #define PGD_USER      4

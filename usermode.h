@@ -15,8 +15,8 @@
 #define USER_MODE_VIRT_TEXT  0x10000000
 #define USER_MODE_VIRT_STACK 0x10003000
 
-
-
+void usermode_load_first_program();
 void initialize_usermode();
+void switch_to_um();
 
 #endif

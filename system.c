@@ -17,18 +17,30 @@
 
 #include "system.h"
 #include "util.h"
+#include "lock.h"
 
 #define PIT_FREQUENCY 1000
 
 int vga_buffer_index = 0;
 int vga_buffer_line = 0;
 
+spinlock spinlock_vga;
+
+void vga_init() {
+
+	INIT_SPIN_LOCK(&spinlock_vga);
+}
+
 //
 // Outputs a NULL terminated string in VGA buffer
 //
 void print_vga(char *c, bool newline) {
 
-    unsigned short *p = (unsigned short *)((char*)VIDEO_VIRT_BUFFER+vga_buffer_index+(vga_buffer_line*160));
+    unsigned short *p;
+
+	spinlock_lock(&spinlock_vga);
+
+	p = (unsigned short *)((char*)VIDEO_VIRT_BUFFER+vga_buffer_index+(vga_buffer_line*160));
 
     while(*c) {
 
@@ -48,6 +60,8 @@ void print_vga(char *c, bool newline) {
         vga_buffer_index = 0;
         vga_buffer_line++;
     }
+
+	spinlock_unlock(&spinlock_vga);
 }
 
 void print_vga_fixed(char *c, int col, int row) {

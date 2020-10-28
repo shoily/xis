@@ -116,7 +116,7 @@ a20_line:
     // memory buffer location of disk address packet
     movw dap, %si
     xorw %ax, %ax
-	movw %ax, 4(%si)
+    movw %ax, 4(%si)
 
     movw $KERNEL_SECTORS, %ax
     

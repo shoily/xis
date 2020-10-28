@@ -16,7 +16,6 @@
     .text
 
     .include "krnlconst.S"
-    .equ KERNEL_PGDIR_ENTRY, (KERNEL_VIRT_ADDR >> 20)
 
     .globl _start
 _start:
