@@ -17,6 +17,7 @@
 #include "setup32.h"
 #include "usermode.h"
 #include "page32.h"
+#include "debug.h"
 
 #define AP_INIT_PHYS_TEXT 0x7c00
 
@@ -71,7 +72,7 @@ void copy_smp_init_to_low_mem() {
     char *s = (char*)&init_ap;
     char *d = (char*)(AP_INIT_PHYS_TEXT+KERNEL_VIRT_ADDR);
 
-    print_msg("init_ap_size", (int)init_ap_size, 10, true);
+    printf(KERNEL_DEBUG, "init_ap_size: %d\n", (int)init_ap_size);
 
     for(int i=0;i<(int)init_ap_size;i++) {
         *d++ = *s++;
@@ -118,6 +119,6 @@ void smp_start() {
     lapic_write_register(LAPIC_ICR_2, 0);
     pit_wait_ms(200);
 
-    print_msg("Number of APs", smp_nums, 10, true);
-    print_msg("SMP bits", smp_bits, 16, true);
+    printf(KERNEL_INFO, "Number of APs: %d\n", smp_nums);
+    printf(KERNEL_INFO, "SMP bits: %x\n", smp_bits);
 }

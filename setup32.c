@@ -15,6 +15,7 @@
 #include "setup32.h"
 #include "apic.h"
 #include "smp.h"
+#include "debug.h"
 
 // GDT data
 struct gdt_entry __attribute__((aligned(8))) gdt[LAST_SEG/8];
@@ -77,17 +78,7 @@ void lapic_irq_handler_1();
 __attribute__((regparm(0))) void trap_handler(struct regs_frame *rf) {
 
 #ifdef DEBUG_TRAP
-    print_vga("Trap handler", true);
-    
-    print_msg("gs", rf->gs, 16, false);
-    print_msg("fs", rf->fs, 16, false);
-    print_msg("es", rf->es, 16, false);
-    print_msg("ds", rf->ds, 16, false);
-    print_msg("code_nr", rf->code_nr, 16, false);
-    print_msg("cs", rf->cs, 16, false);
-    print_msg("eip", rf->eip, 16, false);
-    print_msg("ss", rf->ss, 16, false);
-    print_msg("esp", rf->esp, 16, false);
+    printf(KERNEL_DEBUG, "Trap handler\ngs: %x fs: %x es: %x ds: %x code_nr: %x cs: %x eip: %x ss: %x esp: %x\n", rf->gs, rf->fs, rf->es, rf->ds, rf->code_nr, rf->cs, rf->eip, rf->ss, rf->esp);
 #else
 	UNUSED(rf);
 #endif
@@ -133,7 +124,7 @@ __attribute__((regparm(0))) void common_interrupt_handler(struct regs_frame *rf)
 __attribute__((regparm(0))) void common_sys_call_handler(struct regs_frame *rf) {
 
 #ifdef DEBUG_SYSCALL
-    print_msg("System call", rf->code_nr | CUR_CPU, 16, true);
+    printf(KERNEL_DEBUG, "System call: %x\n", rf->code_nr | CUR_CPU, 16);
 #else
 	UNUSED(rf);
 #endif
@@ -299,5 +290,5 @@ void setup32() {
 
     STI;
 
-    print_vga("Setup GDT,IDT, LDT and TSS done", true);
+    printf(KERNEL_INFO, "Setup GDT,IDT, LDT and TSS done\n");
 }

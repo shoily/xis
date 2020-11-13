@@ -21,5 +21,6 @@ SECTIONS
     _kernel_stack_0_start = _kernel_stack_0 + 0x2000;
     _kernel_private_data = _kernel_stack_0_start + (0x2000 * 32);
     _kernel_heap_start = (_kernel_private_data + 0x1000) & ~(0xfff);
+    _kernel_debug_buffer = _kernel_heap_start;
     _end_kernel = .;
 }

@@ -18,47 +18,45 @@
 #include "system.h"
 #include "util.h"
 #include "lock.h"
+#include "debug.h"
 
 #define PIT_FREQUENCY 1000
 
-int vga_buffer_index = 0;
-int vga_buffer_line = 0;
+short *vga_buf_ptr;
+//int vga_buffer_line = 0;
 
 spinlock spinlock_vga;
+
+int ebda;
 
 void vga_init() {
 
 	INIT_SPIN_LOCK(&spinlock_vga);
+	vga_buf_ptr = (short*)VIDEO_VIRT_BUFFER;
 }
 
 //
 // Outputs a NULL terminated string in VGA buffer
 //
-void print_vga(char *c, bool newline) {
-
-    unsigned short *p;
+void print_vga(char *c) {
 
 	spinlock_lock(&spinlock_vga);
 
-	p = (unsigned short *)((char*)VIDEO_VIRT_BUFFER+vga_buffer_index+(vga_buffer_line*160));
-
     while(*c) {
 
-        if (vga_buffer_line > 25) break;
-    
-        *p = ((0xF << 8) | *c);
-        c++;
-        vga_buffer_index += 2;
-        p++;
-        if (vga_buffer_index == 160) {
-            vga_buffer_line++;
-            vga_buffer_index = 0;
-        }
-    }
+		if (*c == '\n') {
 
-    if (newline) {
-        vga_buffer_index = 0;
-        vga_buffer_line++;
+			vga_buf_ptr += (160-(((int)vga_buf_ptr-VIDEO_VIRT_BUFFER)%160))/sizeof(short);
+			c++;
+			continue;
+		}
+
+		if (vga_buf_ptr >= (short*)(VIDEO_VIRT_BUFFER+(160*25)))
+			break;
+
+		*vga_buf_ptr = ((0xF << 8) | *c);
+        c++;
+        vga_buf_ptr++;
     }
 
 	spinlock_unlock(&spinlock_vga);
@@ -91,25 +89,14 @@ void dump_e820() {
     int i;
     int e820_count= *((int *) E820_MAP_VIRT_COUNT);
     struct e820_map *e820 = (struct e820_map *) E820_MAP_VIRT_ADDRESS;
-    char str[17];
 
-    print_vga("E820 map", true);
-    print_vga("===========================================================", true);
+    printf(KERNEL_DEBUG, "E820 map\n");
+    printf(KERNEL_DEBUG, "===========================================================\n");
 
-    print_vga("Base address       | Length             | Type", true);
+    printf(KERNEL_DEBUG, "Base address | Length | Type\n");
 
     for(i=0;i<e820_count;i++, e820++) {
-        print_vga("0x", false);
-        lltoa(e820->base, str, 16);
-        print_vga(str, false);
-        print_vga(" | ", false);
-        print_vga("0x", false);
-        lltoa(e820->length, str, 16);
-        print_vga(str, false);
-        print_vga(" | ", false);
-        itoa(e820->type, str, 16);
-        print_vga(str, false);
-        print_vga((e820->type == 1) ? " Free memory" : " Reserved memory", true);
+        printf(KERNEL_DEBUG, "0x%p | 0x%p | %d %s\n", (long)e820->base, (long)e820->length, e820->type, (e820->type == 1) ? " Free memory" : " Reserved memory");
     }
 }
 
@@ -208,8 +195,8 @@ void pit_wait(int cycles) {
 
 #ifdef DEBUG
     CLI;
-    print_msg("status_reg", status_reg, 16, false);
-    print_msg("counter", counter, 10, true);
+    printf(KERNEL_DEBUG, "status_reg: %x", status_reg);
+    printf(KERNEL_DEBUG, "counter: %x\n", counter);
     STI;
 #endif
 }
@@ -220,4 +207,13 @@ void pit_wait_ms(int ms) {
 
         pit_wait(PIT_HZ);
     }
+}
+
+void bda_read_table() {
+
+	short *p = (short*)(0x40e + KERNEL_VIRT_ADDR);
+
+	ebda = (int)(unsigned short)*p;
+
+	printf(KERNEL_INFO, "EBDA: %x\n", ebda);
 }

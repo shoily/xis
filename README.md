@@ -22,8 +22,9 @@ gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nosta
 gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c page32.c -o page32.o<br>
 gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c usermode.c -o usermode.o<br>
 gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c lock.c -o lock.o<br>
+gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c debug.c -o debug.o<br>
 
-ld -static -T kernel32.ld -m elf_i386 -nostdlib --nmagic boot32.o util.o system.o apic.o smp.o setup32.o handlr32.o memory.o page32.o usermode.o lock.o start.o -o xiskernel.elf<br>
+ld -static -T kernel32.ld -m elf_i386 -nostdlib --nmagic boot32.o util.o system.o apic.o smp.o setup32.o handlr32.o memory.o page32.o usermode.o lock.o debug.o start.o -o xiskernel.elf<br>
 objcopy -O binary xiskernel.elf xiskernel.bin<br>
 
 <b>Instructions for building boot loader -</b><br>

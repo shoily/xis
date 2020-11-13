@@ -19,9 +19,14 @@
 
 #define UNUSED(x) (void)(x)
 
+typedef unsigned char *va_list;
+#define va_start(arg, list) (list = (unsigned char*)&arg+sizeof(arg))
+#define va_arg(list, type) *((type *) ((list+=sizeof(type))-sizeof(type)))
+
 int strlen(char *p);
 void itoa(int val, char *str, int base);
+void ltoa(long val, char *str, int base);
 void lltoa(long long val, char *str, int base);
-void print_msg(char *msg, int info, int base, bool newline);
+void ptrtoa(void *val, char *str, bool maxfill);
 
 #endif // _COMMON_H

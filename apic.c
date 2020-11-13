@@ -14,6 +14,7 @@
 #include "util.h"
 #include "system.h"
 #include "setup32.h"
+#include "debug.h"
 
 int lapic_present = 0;
 int lapic_base_register;
@@ -81,7 +82,7 @@ void init_lapic() {
                          : "%eax", "%edx"
                          );
 
-    print_msg("Local APIC present", lapic_present, 10, true);
+	printf(KERNEL_INFO, "Local APIC present: %d\n", lapic_present);
 
     if (!lapic_present) {
 
@@ -95,12 +96,12 @@ void init_lapic() {
     lapic_base_register = eax & 0xfffff000;
 
     build_pagetable((pgd_t*)&_kernel_pg_dir, pgtable, lapic_base_register, lapic_base_register, PAGE_SIZE, PGD_PRESENT | PGD_WRITE, PTE_PRESENT | PTE_WRITE);
-    
-    print_msg("Local APIC address", eax, 16, false);
+
+	printf(KERNEL_INFO, "Local APIC address: %p\n", eax);
 
     lapic_id = lapic_read_register(LAPIC_ID_REG) >> 24;
 
-    print_msg("Local APIC id", lapic_id, 16, true);
+    printf(KERNEL_INFO, "Local APIC id: %x\n", lapic_id);
 
     // enable receiving interrupt
     lapic_write_register(LAPIC_SPURIOUS_REG, lapic_read_register(LAPIC_SPURIOUS_REG)| 0x100);
@@ -118,7 +119,5 @@ void lapic_switch(bool enable) {
     else
         value &= ~0x1ff;
 
-    //print_msg("lapic_switch", value, 16, true);
-    
     lapic_write_register(LAPIC_SPURIOUS_REG, value);
 }

@@ -63,7 +63,8 @@ void init_pit_frequency();
 void pit_wait(int cycles);
 void pit_wait_ms(int ms);
 void vga_init();
-void print_vga(char *c, bool newline);
+void print_vga(char *c);
 void print_vga_fixed(char *c, int col, int row);
+void bda_read_table();
 
 #endif
