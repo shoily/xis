@@ -24,7 +24,9 @@
     .text
     .globl _start
 _start:
-    movb %dl, boot_drive
+
+	movb %dl, boot_drive
+
 
     // clear screen
     movb $0, %ah
@@ -114,14 +116,16 @@ a20_line:
     movw %ax, %ss
 
     // memory buffer location of disk address packet
-    movw dap, %si
+    movw $dap, %si
     xorw %ax, %ax
-    movw %ax, 4(%si)
+	movw %ax, 4(%si)
+
+
 
     movw $KERNEL_SECTORS, %ax
     
     // check kernel can fit into existing memory
-    cmpw $160, %ax
+    cmpw $255, %ax
     ja kernel_too_big
 
     // read enough sectors to load kernel
@@ -137,7 +141,7 @@ a20_line:
     movl %ebx, 12(%si)
 
     // segment of buffer address
-    movw $0x5000, 6(%si)
+    movw $0x7e0, 6(%si)
 
     // set stack location at 4K offset
     movl $0x1000, %ebp
@@ -147,7 +151,10 @@ a20_line:
     movb $0x42, %ah
 	int	$0x13
 
-    jc lba_read_error
+	jc lba_read_error
+
+
+
 
     // initialize protected mode
     cli
@@ -170,7 +177,7 @@ a20_line:
     orl $1, %eax
     movl %eax, %cr0
 
-    cli
+	cli
 
     // jump to protected mode
     ljmpl *codesegaddr
@@ -210,7 +217,7 @@ protectedmodeaddress:
     // copy kernel to 1 MB offset
     cld
     movl $(KERNEL_SECTORS * 0x200 / 4), %ecx
-    movl $0x50000, %esi
+    movl $0x7e00, %esi
     movl $0x100000, %edi
     rep movsl
 

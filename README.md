@@ -1,6 +1,6 @@
 <b>XIS</b> operating system needs only 2MB of memory to run.<br>
 
-It supports boot loader, kernel with protected mode, paging, E820 enumeration, interrupt and exception handling, system calls, user mode, local APIC and multiprocessor.
+It supports boot loader, kernel with protected mode, paging, E820 enumeration, interrupt and exception handling, system calls, user mode, local APIC, ACPI and multiprocessor.
 
 <b>Instructions for building kernel -</b><br>
 cat krnlconst.hdr | awk 'BEGIN{print "#ifndef _KERNEL_CONST_H"};{print "#define " $1 " " $2};END{print "#endif";}' > krnlconst.h<br>
@@ -23,8 +23,9 @@ gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nosta
 gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c usermode.c -o usermode.o<br>
 gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c lock.c -o lock.o<br>
 gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c debug.c -o debug.o<br>
+gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c acpi.c -o acpi.o<br>
 
-ld -static -T kernel32.ld -m elf_i386 -nostdlib --nmagic boot32.o util.o system.o apic.o smp.o setup32.o handlr32.o memory.o page32.o usermode.o lock.o debug.o start.o -o xiskernel.elf<br>
+ld -static -T kernel32.ld -m elf_i386 -nostdlib --nmagic boot32.o util.o system.o apic.o smp.o setup32.o handlr32.o memory.o page32.o usermode.o lock.o acpi.o debug.o start.o -o xiskernel.elf<br>
 objcopy -O binary xiskernel.elf xiskernel.bin<br>
 
 <b>Instructions for building boot loader -</b><br>
