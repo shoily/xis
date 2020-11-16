@@ -20,8 +20,6 @@ int lapic_present = 0;
 int lapic_base_register;
 int lapic_id;
 
-#define ADD2PTR(x, y) ((int)(x) + (int)(y))
-
 extern int _kernel_pg_dir;
 
 char __attribute__((aligned(4096))) lapic_pg_table[4096];

@@ -33,7 +33,7 @@ int start_kernel(void) {
     setup32();
     init_memory();
 	bda_read_table();
-	acpi_find_rsdp();
+	acpi_init();
 	usermode_load_first_program();
 	smp_start();
 	initialize_usermode();

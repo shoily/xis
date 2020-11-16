@@ -13,29 +13,37 @@
 #include "debug.h"
 #include "krnlconst.h"
 #include "debug.h"
+#include "type.h"
 
 extern int ebda;
 
-void *rsd_ptr;
+typedef struct _RSD {
 
-#define CHECK_RSD_PTR(p) (((char*)p)[0]=='R' &&	\
-						  ((char*)p)[1]=='S' &&	\
-						  ((char*)p)[2]=='D' &&	\
-						  ((char*)p)[3]==' ' &&	\
-						  ((char*)p)[4]=='P' &&	\
-						  ((char*)p)[5]=='T' &&	\
-						  ((char*)p)[6]=='R' &&	\
-						  ((char*)p)[7]==' ')
+	char signature[8];
+	byte checksum;
+	char OEMID[6];
+	byte revision;
+	int rsdt_address;
+}__attribute__((packed)) RSD;
 
-void acpi_find_rsdp() {
+#define CHECK_RSD_PTR(p) (p[0]=='R' &&	\
+						  p[1]=='S' &&	\
+						  p[2]=='D' &&	\
+						  p[3]==' ' &&	\
+						  p[4]=='P' &&	\
+						  p[5]=='T' &&	\
+						  p[6]=='R' &&	\
+						  p[7]==' ')
+
+RSD *rsd;
+
+bool acpi_find_rsdp() {
 
 	int phase = 0;
-	int cur, end;
+	RSD *cur, *end;
 
-	rsd_ptr = 0;
-	
-	cur = ebda + KERNEL_VIRT_ADDR;
-	end = ebda + 1024;
+	cur = (RSD*)ADD2PTR(ebda, KERNEL_VIRT_ADDR);
+	end = (RSD*)ADD2PTR(ebda, 1024);
 
 	while(phase < 2) {
 
@@ -45,18 +53,31 @@ void acpi_find_rsdp() {
 
 			if (phase == 1) {
 
-				cur = 0xE0000 + KERNEL_VIRT_ADDR;
-				end = cur + 0x20000;
+				cur = (RSD*)ADD2PTR(0xE0000, KERNEL_VIRT_ADDR);
+				end = (RSD*)ADD2PTR(cur, 0x20000);
 			}
 		}
 
-		if (CHECK_RSD_PTR(cur)) {
+		if (CHECK_RSD_PTR(cur->signature)) {
 
-			rsd_ptr = (void*)cur;
-			printf(KERNEL_INFO, "RSD PTR: %p\n", rsd_ptr-KERNEL_VIRT_ADDR);
-			break;
+			rsd = cur;
+			printf(KERNEL_INFO, "RSD PTR: %p\n", (long)rsd-KERNEL_VIRT_ADDR);
+			return true;
 		}
 
-		cur += 16;
+		cur++;
 	}
+
+	return false;
+}
+
+void acpi_init() {
+
+	rsd = NULL;
+	if (!acpi_find_rsdp()) {
+	
+		printf(KERNEL_INFO, "No ACPI!!!\n");
+		return;
+	}
+	printf(KERNEL_INFO, "RSDT: %p\n", rsd->rsdt_address);
 }

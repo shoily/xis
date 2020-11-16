@@ -16,5 +16,11 @@ typedef int bool;
 #define true 1
 #define false 0
 
+typedef char byte;
+
+#define NULL (void*)0
+
+#define ADD2PTR(x, y) ((long)(x) + (long)(y))
+
 #endif
 
