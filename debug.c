@@ -41,6 +41,20 @@ typedef enum _va_type {
 	VA_USHORT = 8
 } va_type;
 
+#define DEBUG_BUFFER_SIZE 4096
+
+#define WRITE_TO_BUF(addr, ch) { \
+		if(addr==(char*)ADD2PTR(&_kernel_debug_buffer,DEBUG_BUFFER_SIZE-1)) { \
+			*++addr='\0';												\
+			if (level >= debug_level_for_vga) {							\
+				print_vga(cur_debug_mem);								\
+			}															\
+			cur_debug_mem=addr=(char*)&_kernel_debug_buffer;			\
+		}																\
+		*addr++=(char)ch;						\
+	}											\
+
+
 void printf(int level, char *fmt, ...) {
 
 	va_list list;
@@ -68,22 +82,21 @@ void printf(int level, char *fmt, ...) {
 			p++;
 			if (*p == 37 || *p == '\0') {
 
-				*buf++ = 37;
-				//if (*p != '\0')
-				//	p++;
+				WRITE_TO_BUF(buf, 37);
 			} else {
 
 				if (*p == 'c') {
 
 					val.c = va_arg(list, char);
-					*buf++ = val.c;
+					WRITE_TO_BUF(buf, val.c);
 				} else if (*p == 'i' || *p == 'd' || *p == 'x') {
 
 					val.i = va_arg(list, int);
 					itoa(val.i, str, (*p == 'x') ? 16 : 10);
 					ptr = str;
 					while(*ptr) {
-						*buf++ = *ptr++;
+						WRITE_TO_BUF(buf, *ptr);
+						ptr++;
 					}
 				} else if (*p == 'p') {
 
@@ -91,7 +104,8 @@ void printf(int level, char *fmt, ...) {
 					ptrtoa(val.p, str, 16);
 					ptr = str;
 					while(*ptr) {
-						*buf++ = *ptr++;
+						WRITE_TO_BUF(buf, *ptr);
+						ptr++;
 					}
 				} else if (*p == 'u') {
 
@@ -99,7 +113,8 @@ void printf(int level, char *fmt, ...) {
 					lltoa(val.u, str, 10);
 					ptr = str;
 					while(*ptr) {
-						*buf++ = *ptr++;
+						WRITE_TO_BUF(buf, *ptr);
+						ptr++;
 					}
 				} else if (*p == 'l' && *(p+1) == 'l') {
 
@@ -108,25 +123,27 @@ void printf(int level, char *fmt, ...) {
 					lltoa(val.ll,str, 10);
 					ptr = str;
 					while(*ptr) {
-						*buf++ = *ptr++;
+						WRITE_TO_BUF(buf, *ptr);
+						ptr++;
 					}
 				} else if (*p == 's') {
 
 					ptr = val.s = va_arg(list, char*);
 					while(*ptr) {
-						*buf++ = *ptr++;
+						WRITE_TO_BUF(buf, *ptr);
+						ptr++;
 					}
 				}
 			}
 		} else {
 
-			*buf++ = *p;
+			WRITE_TO_BUF(buf, *p);
 		}
 
 		p++;
 	}
 
-	*buf++ = '\0';
+	WRITE_TO_BUF(buf, '\0');
 
 	if (level >= debug_level_for_vga) {
 
@@ -137,21 +154,3 @@ void printf(int level, char *fmt, ...) {
 
 	spinlock_unlock(&lock_debug_mem);
 }
-/*
-void debug_msg(int flags, char *msg, int len) {
-
-	int i = 0;
-	
-	spinlock_lock(&lock_debug_mem);
-
-	while (i < len) {
-
-		*cur_debug_mem++ = msg[i++];
-	}
-
-	*cur_debug_mem++ = 0;
-	*cur_debug_mem++ = 0;
-
-	spinlock_unlock(&lock_debug_mem);
-}
-*/
