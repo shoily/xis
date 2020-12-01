@@ -33,10 +33,6 @@
     .globl irq_handler_14
     .globl irq_handler_15
 
-    .globl lapic_irq_handler_0
-    .globl lapic_irq_handler_1
-
-
     // macro for defining IRQ handler using PIC
     .macro DEFINE_IRQ_HANDLER irqn
     
@@ -61,14 +57,6 @@
     push %ebp
     call common_interrupt_handler
     addl $4, %esp
-
-    movb $0x20,%al
-    movb $\irqn, %ah
-    cmpb $8, %ah
-    jl 1f
-    outb %al,$0xa0
-1:
-    outb %al,$0x20
 
     pop %gs
     pop %fs
@@ -174,48 +162,3 @@ common_trap_handler:
     sti
 
     iret
-
-
-    // macro for defining IRQ handler using Local APIC
-    .macro DEFINE_IRQ_HANDLER_LAPIC irqn
-
-    lapic_irq_handler_\irqn:
-    pushl $\irqn
-    pusha
-    push %ds
-    push %es
-    push %fs
-    push %gs
-
-    movl %esp, %ebp
-
-    movl $0x28, %eax
-    movl %eax, %ds
-    movl %eax, %es
-    movl %eax, %fs
-    movl %eax, %gs
-
-    push %ebp
-    call common_interrupt_handler
-    addl $4, %esp
-
-    // send EOI
-    movl lapic_base_register, %eax
-    addl $0xb0, %eax
-    movl $0, (%eax)
-
-    pop %gs
-    pop %fs
-    pop %es
-    pop %ds
-    popa
-
-    addl $4, %esp
-
-    iret
-
-    .endm
-
-
-    DEFINE_IRQ_HANDLER_LAPIC 0
-    DEFINE_IRQ_HANDLER_LAPIC 1

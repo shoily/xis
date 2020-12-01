@@ -49,6 +49,8 @@ extern int _kernel_stack_0_start;
 extern int _kernel_pg_dir;
 
 extern int lapic_present;
+extern bool ioapic_initialized;
+extern int lapic_base_register;
 
 void common_trap_handler();
 void sys_call_handler_128();
@@ -69,9 +71,6 @@ void irq_handler_12();
 void irq_handler_13();
 void irq_handler_14();
 void irq_handler_15();
-
-void lapic_irq_handler_0();
-void lapic_irq_handler_1();
 
 #define DEBUG_TRAP 1
 
@@ -97,6 +96,33 @@ int timer_counter[MAX_NUM_SMPS];
 int seconds[MAX_NUM_SMPS];
 #endif
 
+void sendEOI(int intno) {
+
+	if (ioapic_initialized || (intno == 0 && lapic_present)) {
+
+		__asm__ __volatile__("movl %0,%%eax;"
+							 "addl $0xb0,%%eax;"
+							 "movl $0,(%%eax);"
+							 :
+							 : "m"(lapic_base_register)
+							 : "%eax"
+							);
+	} else {
+
+		__asm__ __volatile__("movb $0x20,%%al;"
+							 "movb %0,%%ah;"
+							 "cmpb $8,%%ah;"
+							 "jl 1f;"
+							 "outb %%al,$0xa0;"
+							 "1:"
+							 "outb %%al,$0x20;"
+							 :
+							 : "m"(intno)
+							 : "%eax"
+							);
+	}
+}
+
 __attribute__((regparm(0))) void common_interrupt_handler(struct regs_frame *rf) {
 
     if (rf->code_nr == 0) {
@@ -111,7 +137,8 @@ __attribute__((regparm(0))) void common_interrupt_handler(struct regs_frame *rf)
 #ifdef DEBUG_TIMER
 			char s[20];
 			timer_counter[CUR_CPU]++;
-			if (timer_counter[CUR_CPU] >= (1000*lapic_calibration_tick)) {
+			if ((!lapic_present && timer_counter[CUR_CPU] >= PIT_HZ) ||
+				(lapic_present && timer_counter[CUR_CPU] >= (1000*lapic_calibration_tick))) {
 				timer_counter[CUR_CPU] = 0;
 				seconds[CUR_CPU]++;
 
@@ -121,6 +148,8 @@ __attribute__((regparm(0))) void common_interrupt_handler(struct regs_frame *rf)
 #endif
 		}
     }
+
+	sendEOI(rf->code_nr);
 }
 
 __attribute__((regparm(0))) void common_sys_call_handler(struct regs_frame *rf) {
@@ -286,7 +315,6 @@ void setup32() {
     init_lapic();
 
     if (!lapic_present) {
-		lapic_calibration_tick = 1;
         init_pic_8259();
         init_pit_frequency();
     }

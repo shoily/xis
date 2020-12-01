@@ -21,6 +21,7 @@ int lapic_base_register;
 int lapic_id;
 int ioapic_base_register;
 u32 ioapic_gsi_base;
+bool ioapic_initialized;
 
 extern int _kernel_pg_dir;
 
@@ -48,13 +49,10 @@ extern int lapic_calibration_tick;
 extern bool lapic_calibration_mode;
 extern bool lapic_timer_enabled;
 
-void lapic_irq_handler_0();
-
 void calibrate_lapic_timer() {
 
 	lapic_write_register(LAPIC_LVT_TIMER_REG, LAPIC_IDT_VECTOR | 0x20000); // Periodic timer on vector 32.
     lapic_write_register(LAPIC_DIVIDE_CONFIGURATION_REG, LAPIC_DIVIDE_CONFIG_VALUE); // Divide by 128
-    set_idt(LAPIC_IDT_VECTOR, lapic_irq_handler_0);
 
     lapic_calibration_mode = true;
     lapic_write_register(LAPIC_INITIAL_COUNTER_REG, LAPIC_COUNTER_VALUE);
@@ -122,4 +120,8 @@ void lapic_switch(bool enable) {
         value &= ~0x1ff;
 
     lapic_write_register(LAPIC_SPURIOUS_REG, value);
+}
+
+void ioapic_init() {	
+	ioapic_initialized = false;
 }

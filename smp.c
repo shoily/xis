@@ -51,7 +51,7 @@ void finish_smp_initialization(int smp_id) {
 	loadTSS32(smp_id);
 	loadIDT32();
 
-	lapic_write_register(LAPIC_SPURIOUS_REG, lapic_read_register(LAPIC_SPURIOUS_REG)| 0x100);
+	lapic_write_register(LAPIC_SPURIOUS_REG, lapic_read_register(LAPIC_SPURIOUS_REG)| 0x1ff);
 	lapic_write_register(LAPIC_LVT_TIMER_REG, LAPIC_IDT_VECTOR | 0x20000); // Periodic timer on vector 32.
 	lapic_write_register(LAPIC_DIVIDE_CONFIGURATION_REG, LAPIC_DIVIDE_CONFIG_VALUE); // Divide by 128
 	lapic_write_register(LAPIC_INITIAL_COUNTER_REG, LAPIC_COUNTER_VALUE);
@@ -93,6 +93,9 @@ void initialize_kernel_pg_tables() {
 void smp_start() {
 
     INIT_SPIN_LOCK(&spinlock_smp);
+
+	if (!lapic_present)
+		return;
 
     copy_smp_init_to_low_mem();
 
