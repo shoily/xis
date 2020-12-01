@@ -90,6 +90,8 @@ int lapic_calibration_tick = 0;
 bool lapic_calibration_mode = false;
 bool lapic_timer_enabled = false;
 
+#define DEBUG_TIMER
+
 #ifdef DEBUG_TIMER
 int timer_counter[MAX_NUM_SMPS];
 int seconds[MAX_NUM_SMPS];
@@ -105,7 +107,7 @@ __attribute__((regparm(0))) void common_interrupt_handler(struct regs_frame *rf)
 
             lapic_calibration_tick++;
             
-        } else if (lapic_timer_enabled) {
+        } else {
 #ifdef DEBUG_TIMER
 			char s[20];
 			timer_counter[CUR_CPU]++;
@@ -117,7 +119,7 @@ __attribute__((regparm(0))) void common_interrupt_handler(struct regs_frame *rf)
 				print_vga_fixed(s, 140, 5+CUR_CPU);
 			}
 #endif
-        }
+		}
     }
 }
 
@@ -284,6 +286,7 @@ void setup32() {
     init_lapic();
 
     if (!lapic_present) {
+		lapic_calibration_tick = 1;
         init_pic_8259();
         init_pit_frequency();
     }

@@ -72,8 +72,6 @@ void copy_smp_init_to_low_mem() {
     char *s = (char*)&init_ap;
     char *d = (char*)(AP_INIT_PHYS_TEXT+KERNEL_VIRT_ADDR);
 
-    printf(KERNEL_DEBUG, "init_ap_size: %d\n", (int)init_ap_size);
-
     for(int i=0;i<(int)init_ap_size;i++) {
         *d++ = *s++;
     }

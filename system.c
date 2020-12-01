@@ -213,7 +213,7 @@ void bda_read_table() {
 
 	short *p = (short*)(0x40e + KERNEL_VIRT_ADDR);
 
-	ebda = (int)(unsigned short)*p;
+	ebda = ((int)(unsigned short)*p) << 4;
 
 	printf(KERNEL_INFO, "EBDA: %x\n", ebda);
 }

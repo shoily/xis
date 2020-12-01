@@ -16,9 +16,11 @@
 #include "setup32.h"
 #include "debug.h"
 
-int lapic_present = 0;
+int lapic_present;
 int lapic_base_register;
 int lapic_id;
+int ioapic_base_register;
+u32 ioapic_gsi_base;
 
 extern int _kernel_pg_dir;
 
@@ -69,6 +71,8 @@ void init_lapic() {
 
     int eax, edx;
     pte_t *pgtable[1];
+
+	lapic_present = 0;
 
     __asm__ __volatile__("movl $1, %%eax;"
                          "cpuid;"

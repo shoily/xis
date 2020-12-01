@@ -23,7 +23,11 @@ typedef unsigned char *va_list;
 #define va_start(arg, list) (list = (unsigned char*)&arg+sizeof(arg))
 #define va_arg(list, type) *((type *) ((list+=sizeof(type))-sizeof(type)))
 
+int strncmp(const char *s1, const char *s2, size_t len);
 int strlen(char *p);
+
+#define memcmp(p1, p2, num) strncmp((const char *)p1, (const char *)p2, num)
+
 void itoa(int val, char *str, int base);
 void ltoa(long val, char *str, int base);
 void lltoa(long long val, char *str, int base);
