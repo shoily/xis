@@ -200,3 +200,85 @@ int strncmp(const char *s1, const char *s2, size_t len) {
 
 	return 0;
 }
+
+void sprintf(char *buf, char *fmt, ...) {
+
+	va_list list;
+	va_start(fmt, list);
+	char *p = fmt;
+	char *ptr;
+
+	union {
+		char c;
+		int i;
+		unsigned int u;
+		long long ll;
+		char *s;
+		void *p;
+	} val;
+	char str[20];
+
+	while(*p) {
+
+		if (*p == '%') {
+			p++;
+			if (*p == 37 || *p == '\0') {
+
+				*buf++ = 37;
+			} else {
+
+				if (*p == 'c') {
+
+					val.c = va_arg(list, char);
+					*buf++ = val.c;
+				} else if (*p == 'i' || *p == 'd' || *p == 'x') {
+
+					val.i = va_arg(list, int);
+					itoa(val.i, str, (*p == 'x') ? 16 : 10);
+					ptr = str;
+					while(*ptr) {
+						*buf++=*ptr++;
+					}
+				} else if (*p == 'p') {
+
+					val.p = va_arg(list, void*);
+					ptrtoa(val.p, str, 16);
+					ptr = str;
+					while(*ptr) {
+						*buf++=*ptr++;
+					}
+				} else if (*p == 'u') {
+
+					val.u = va_arg(list, unsigned int);
+					lltoa(val.u, str, 10);
+					ptr = str;
+					while(*ptr) {
+						*buf++=*ptr++;
+					}
+				} else if (*p == 'l' && *(p+1) == 'l') {
+
+					p++;
+					val.ll = va_arg(list, long long);
+					lltoa(val.ll,str, 10);
+					ptr = str;
+					while(*ptr) {
+						*buf++=*ptr++;
+					}
+				} else if (*p == 's') {
+
+					ptr = val.s = va_arg(list, char*);
+					while(*ptr) {
+						*buf++=*ptr++;
+					}
+				}
+			}
+		} else {
+
+			*buf++=*p;
+		}
+
+		p++;
+	}
+
+	*buf='\0';
+}

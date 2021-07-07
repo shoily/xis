@@ -32,5 +32,19 @@ void itoa(int val, char *str, int base);
 void ltoa(long val, char *str, int base);
 void lltoa(long long val, char *str, int base);
 void ptrtoa(void *val, char *str, bool maxfill);
+void sprintf(char *buf, char *fmt, ...);
 
-#endif // _COMMON_H
+typedef enum _va_type {
+
+	VA_BYTE = 0,
+	VA_PERCENT = 1,
+	VA_CHAR = 2,
+	VA_UCHAR = 3,
+	VA_INT = 4,
+	VA_UINT = 5,
+	VA_HEX = 6,
+	VA_SHORT = 7,
+	VA_USHORT = 8
+} va_type;
+
+#endif // _UTIL_H

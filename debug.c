@@ -28,19 +28,6 @@ void debug_init() {
 	INIT_SPIN_LOCK(&lock_debug_mem);
 }
 
-typedef enum _va_type {
-
-	VA_BYTE = 0,
-	VA_PERCENT = 1,
-	VA_CHAR = 2,
-	VA_UCHAR = 3,
-	VA_INT = 4,
-	VA_UINT = 5,
-	VA_HEX = 6,
-	VA_SHORT = 7,
-	VA_USHORT = 8
-} va_type;
-
 #define DEBUG_BUFFER_SIZE 4096
 
 #define WRITE_TO_BUF(addr, ch) { \
