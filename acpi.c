@@ -19,7 +19,6 @@
 
 extern int ebda;
 extern int ioapic_base_register;
-extern int ioapic_gsi_base;
 
 typedef struct _RSD {
 
@@ -95,27 +94,27 @@ int num_acpi_tables;
 bool acpi_find_rsdp() {
 
 	int phase = 0;
-	RSD *cur, *end;
+	char *cur, *end;
 
-	cur = (RSD*)ADD2PTR(ebda, KERNEL_VIRT_ADDR);
-	end = (RSD*)ADD2PTR(ebda, 1024);
+	cur = (char*)ADD2PTR(ebda, KERNEL_VIRT_ADDR);
+	end = (char*)ADD2PTR(ebda, 1024);
 
 	while(phase < 2) {
 
-		if (cur == end) {
+		if (cur >= end) {
 
 			phase++;
 
 			if (phase == 1) {
 
-				cur = (RSD*)ADD2PTR(0xE0000, KERNEL_VIRT_ADDR);
-				end = (RSD*)ADD2PTR(cur, 0x20000);
+				cur = (char*)ADD2PTR(0xE0000, KERNEL_VIRT_ADDR);
+				end = (char*)ADD2PTR(cur, 0x20000);
 			}
 		}
 
-		if (!memcmp(cur->signature, RSDPTR_STR, strlen(RSDPTR_STR))) {
+		if (!strncmp(((RSD*)cur)->signature, RSDPTR_STR, strlen(RSDPTR_STR))) {
 
-			rsdp = cur;
+			rsdp = (RSD*)cur;
 			printf(KERNEL_INFO, "RSDP: %p\n", (long)rsdp-KERNEL_VIRT_ADDR);
 			return true;
 		}
@@ -138,32 +137,31 @@ void acpi_process_madt(ACPI_TABLE *madt) {
 
 		remaining_bytes -= apic_table->length;
 
+		printf(KERNEL_INFO, "Type: %d, L: %d  ", (int)apic_table->type, (int)apic_table->length);
+
 		switch(apic_table->type) {
 
 		case 0:
 		{
-			// local APICs
+			//processor_lapic = (APIC_PROCESSOR_LAPIC*)header;
+			//printf(KERNEL_INFO, "UID: %d, APIC_ID: %d, Flags: %d", (int) processor_lapic->uid, (int) processor_lapic->apic_id, (int)processor_lapic->flags);
 		} break;
 		case 1:
 		{
-			// currently supports one IOAPIC
-			if (!ioapic_base_register) {
-				ioapic_base_register = (int)apic_table->info.ioapic.address;
-				ioapic_gsi_base = (u32)apic_table->info.ioapic.gsi_base;
-				printf(KERNEL_INFO, "IOAPIC base register: %p\n", ioapic_base_register);
-			}
+			//printf(KERNEL_INFO, "IOAPIC_ID: %d, Addr: %x, GSIBase: %d", (int)apic_table->info.ioapic.id, (int)apic_table->info.ioapic.address, (int)apic_table->info.ioapic.gsi_base);
+			ioapic_base_register = (int)apic_table->info.ioapic.address;
 		} break;
 		case 2:
 		{
-			// interrupt source override
+			//printf(KERNEL_INFO, "Src: %d, GSI: %d, Flags: %d", (int)apic_table->info.int_src_override.source, (int)apic_table->info.int_src_override.gsi, (int)apic_table->info.int_src_override.flags);
 		} break;
 		case 3:
 		{
-			// NMI source
+			//printf(KERNEL_INFO, "Flags: %x GSI: %d", (int)apic_table->info.nmi_source.flags, (int)apic_table->info.nmi_source.gsi);
 		} break;
 		case 4:
 		{
-			// local APIC NMI
+			//printf(KERNEL_INFO, "UID: %d, lint: %d, flags: %d", (int)apic_table->info.lapic_nmi.uid, (int)apic_table->info.lapic_nmi.lapic_lint, (int)apic_table->info.lapic_nmi.flags);
 		} break;
 
 		}
@@ -174,7 +172,14 @@ void acpi_process_madt(ACPI_TABLE *madt) {
 
 void acpi_process_table(ACPI_TABLE *acpi_table) {
 
-	if (!memcmp(acpi_table->signature, APIC_STR, strlen(APIC_STR))) {
+	char sig[5];
+
+	for(int i=0;i<4;i++)
+		sig[i] = acpi_table->signature[i];
+	sig[4] = 0;
+	printf(KERNEL_INFO, "ACPI Table: %p, %s, %d, %d ", acpi_table, sig, acpi_table->length, sizeof(ACPI_TABLE));
+
+	if (!strncmp(acpi_table->signature, APIC_STR, strlen(APIC_STR))) {
 
 		acpi_process_madt(acpi_table);
 	}
@@ -184,7 +189,6 @@ void acpi_init() {
 
 	rsdp = NULL;
 	acpi_tables = NULL;
-	ioapic_base_register = 0;
 
 	if (!acpi_find_rsdp()) {
 	
@@ -194,6 +198,7 @@ void acpi_init() {
 	
 	rsdt = (ACPI_TABLE*)ADD2PTR(rsdp->rsdt_address, KERNEL_VIRT_ADDR);
 	printf(KERNEL_INFO, "RSDT: %p\n", (long)rsdt-KERNEL_VIRT_ADDR);
+	printf(KERNEL_INFO, "RSDT Length: %d, %d\n", rsdt->length, sizeof(ACPI_TABLE));
 
 	num_acpi_tables = (rsdt->length - sizeof(ACPI_TABLE)) / sizeof(void*);
 	acpi_tables = (ACPI_TABLE**)ADD2PTR(rsdt, sizeof(ACPI_TABLE));
