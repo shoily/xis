@@ -35,7 +35,6 @@ int start_kernel(void) {
 	bda_read_table();
 	acpi_init();
 	ioapic_init();
-	usermode_load_first_program();
 	smp_start();
 	initialize_usermode();
     switch_to_um();

@@ -70,6 +70,7 @@ highaddress:
 loop:
     jmp loop
 
+    // load smp binary code here
     .section mp_init, "ax"
     .global init_ap
     .align 8
@@ -77,8 +78,16 @@ init_ap:
     .incbin "mpinit.bin"
 
     .global init_ap_size
-    .align 8
-    .global init_ap_size
-
 init_ap_size:
     .int init_ap_size - init_ap
+
+    // load um binary code here
+    .section um_init, "ax"
+    .global init_um
+    .align 4096
+init_um:
+    .incbin "um.bin"
+
+    .global init_um_size
+init_um_size:
+    .int init_um_size - init_um

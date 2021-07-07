@@ -1,21 +1,32 @@
 /*****************************************************************************/
-/*  File: usermode.c                                                         */
+/*  File: um.S                                                               */
 /*                                                                           */
-/*  Description: Header file for user mode process support.                  */
+/*  Description: Usermode code.                                              */
 /*                                                                           */
 /*  Author: Shoily O Rahman <shoily@gmail.com>                               */
 /*                                                                           */
-/*  Date: July 7, 2020                                                       */
+/*  Date: Jun 20, 2021                                                        */
 /*                                                                           */
 /*****************************************************************************/
 
-#ifndef _USERMODE_H
-#define _USERMODE_H
+    .code32
+    .text
 
-#define USER_MODE_VIRT_TEXT  0x10000000
-#define USER_MODE_VIRT_STACK 0x10003000
+.globl _um_start
+_um_start:
 
-void initialize_usermode();
-void switch_to_um();
+    push %ebp
+    mov %esp,%ebp
+    sub  $0x4,%esp
+    movl $0x1,-0x4(%ebp)
+loop:
+    int $0x80
+    mov -0x4(%ebp),%eax
+    inc %eax
+    mov %eax,-0x4(%ebp)
+    jmp loop
+    nop
+    leave
+    ret  
 
-#endif
+

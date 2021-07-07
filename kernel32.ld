@@ -9,7 +9,8 @@ SECTIONS
     .text : {*(.text); }
     .data : {*(.data); }
     .bss :  {*(.bss); }
-    um_size = SIZEOF(um);
+    . = ALIGN(8);
+    .um_init : {*(.um_init); }
     . = ALIGN(8);
     .mp_init : {*(.mp_init); }
     . = ALIGN(4096);

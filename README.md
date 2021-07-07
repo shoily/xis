@@ -6,6 +6,10 @@ It supports boot loader, kernel with protected mode, paging, E820 enumeration, i
 cat krnlconst.hdr | awk 'BEGIN{print "#ifndef _KERNEL_CONST_H"};{print "#define " $1 " " $2};END{print "#endif";}' > krnlconst.h<br>
 cat krnlconst.hdr | awk '{print ".equ " $1 ", " $2};' > krnlconst.S<br>
 
+as --32 um.S -o um.o<br>
+ld --static -T um.ld -m elf_i386 -nostdlib --nmagic -o um.elf um.o<br>
+objcopy -O binary um.elf um.bin<br>
+
 as --32 mpinit.S -o mpinit.o<br>
 ld -static -T mpinit.ld -m elf_i386 -nostdlib --nmagic -o mpinit.elf mpinit.o<br>
 objcopy -O binary mpinit.elf mpinit.bin<br>
