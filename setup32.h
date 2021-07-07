@@ -153,24 +153,24 @@ struct tss_entry {
     }
 
 struct regs_frame {
-    unsigned int gs;
-    unsigned int fs;
-    unsigned int es;
-    unsigned int ds;
-    unsigned int edi;
-    unsigned int esi;
-    unsigned int ebp;
-    unsigned int orig_esp;
-    unsigned int ebx;
-    unsigned int edx;
-    unsigned int ecx;
-    unsigned int eax;
-    unsigned int code_nr;
-    unsigned int eip;
-    unsigned int cs;
-    unsigned int eflags;
-    unsigned int esp;
-    unsigned int ss;
+    u32 gs;
+    u32 fs;
+    u32 es;
+    u32 ds;
+    u32 edi;
+    u32 esi;
+    u32 ebp;
+    u32 orig_esp;
+    u32 ebx;
+    u32 edx;
+    u32 ecx;
+    u32 eax;
+    u32 code_nr;
+    u32 eip;
+    u32 cs;
+    u32 eflags;
+    u32 esp;
+    u32 ss;
 }__attribute__((packed));
 
 typedef void (*idt_function_type)();
