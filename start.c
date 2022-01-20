@@ -19,6 +19,7 @@
 #include "smp.h"
 #include "acpi.h"
 #include "debug.h"
+#include "interrupt.h"
 
 //
 //  Start kernel routine
@@ -27,16 +28,19 @@
 int start_kernel(void) {
 
 	vga_init();
+    if(mem_init())
+        return -1;
 	debug_init();
     printf(KERNEL_INFO, "XIS kernel started (v1.0)\n\n");
     dump_e820();
     setup32();
-    init_memory();
 	bda_read_table();
+    interrupts_init();
 	acpi_init();
 	ioapic_init();
 	smp_start();
 	initialize_usermode();
+    printf(KERNEL_INFO, "Kernel started");
     switch_to_um();
 
     return 0;

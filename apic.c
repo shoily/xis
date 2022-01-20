@@ -19,11 +19,8 @@
 int lapic_present;
 int lapic_base_register;
 int lapic_id;
-int ioapic_base_register;
-u32 ioapic_gsi_base;
-bool ioapic_initialized;
 
-extern int _kernel_pg_dir;
+extern addr_t _kernel_pg_dir;
 
 char __attribute__((aligned(4096))) lapic_pg_table[4096];
 
@@ -89,7 +86,7 @@ void init_lapic() {
         return;
     }
 
-    memset(lapic_pg_table, sizeof(lapic_pg_table), 0);
+    memset(lapic_pg_table, 0, sizeof(lapic_pg_table));
     pgtable[0] = (pte_t*)lapic_pg_table;
 
     read_msr(0x1b, &eax, &edx);
@@ -120,8 +117,4 @@ void lapic_switch(bool enable) {
         value &= ~0x1ff;
 
     lapic_write_register(LAPIC_SPURIOUS_REG, value);
-}
-
-void ioapic_init() {	
-	ioapic_initialized = false;
 }

@@ -13,6 +13,7 @@
     .text
 
     .globl common_trap_handler
+    .globl trap_handler_14
     
     .globl sys_call_handler_128
 
@@ -45,6 +46,8 @@
     push %fs
     push %gs
 
+    pushl $0
+
     movl $0x28, %eax 
     movl %eax, %ds
     movl %eax, %es
@@ -56,7 +59,7 @@
     movl %esp, %ebp
     push %ebp
     call common_interrupt_handler
-    addl $4, %esp
+    addl $8, %esp
 
     pop %gs
     pop %fs
@@ -83,7 +86,9 @@
     push %es
     push %fs
     push %gs
-    
+
+    pushl $0
+
     movl %esp, %ebp
     
     movl $0x28, %eax 
@@ -94,7 +99,7 @@
 
     push %ebp
     call common_sys_call_handler
-    addl $4, %esp
+    addl $8, %esp
 
     pop %gs
     pop %fs
@@ -107,6 +112,43 @@
 
     iret
     
+    .endm
+
+    // macro for defining trap handler
+    .macro DEFINE_TRAP_HANDLER trapnr
+    trap_handler_\trapnr:
+    cli
+    pusha
+
+    push %ds
+    push %es
+    push %fs
+    push %gs
+
+    pushl $\trapnr
+
+    movl %esp, %ebp
+
+    movl $0x28, %eax
+    movl %eax, %ds
+    movl %eax, %es
+    movl %eax, %fs
+    movl %eax, %gs
+
+    push %ebp
+    call trap_handler
+    addl $8, %esp
+
+    pop %gs
+    pop %fs
+    pop %es
+    pop %ds
+
+    popa
+    sti
+
+    iret
+
     .endm
 
 
@@ -130,7 +172,10 @@
 
     // define system call handlers
     DEFINE_SYS_CALL_HANDLER 128
-    
+
+    // define trap handler
+    DEFINE_TRAP_HANDLER 14
+
     
 common_trap_handler:
     cli
@@ -140,7 +185,8 @@ common_trap_handler:
     push %es
     push %fs
     push %gs
-    
+
+    pushl $0
     movl %esp, %ebp
 
     movl $0x28, %eax 
@@ -151,7 +197,7 @@ common_trap_handler:
 
     push %ebp
     call trap_handler
-    addl $4, %esp
+    addl $8, %esp
 
     pop %gs
     pop %fs

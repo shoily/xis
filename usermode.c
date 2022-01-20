@@ -54,8 +54,8 @@ void initialize_usermode() {
 
     pte_t *pgtable[1];
 
-    memset(&um_pg_table[CUR_CPU][0], PAGE_SIZE, 0);
-    memset(&user_mode_stack[CUR_CPU][0], USER_MODE_STACK_SIZE, 0);
+    memset(&um_pg_table[CUR_CPU][0], 0, PAGE_SIZE);
+    memset(&user_mode_stack[CUR_CPU][0], 0, USER_MODE_STACK_SIZE);
     
     pgtable[0] = (pte_t*)&um_pg_table[CUR_CPU][0];
 

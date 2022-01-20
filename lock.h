@@ -16,7 +16,7 @@ typedef struct _spinlock {
     int val;
 } spinlock;
 
-#define INIT_SPIN_LOCK(lock) memset(lock, sizeof(spinlock), 0)
+#define INIT_SPIN_LOCK(lock) memset(lock, 0, sizeof(spinlock))
 
 void spinlock_lock(spinlock *lock);
 void spinlock_unlock(spinlock *lock);

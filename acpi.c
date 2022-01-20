@@ -16,9 +16,11 @@
 #include "type.h"
 #include "util.h"
 #include "system.h"
+#include "interrupt.h"
+#include "page32.h"
 
 extern int ebda;
-extern int ioapic_base_register;
+extern struct ioapic *ioapic;
 
 typedef struct _RSD {
 
@@ -96,8 +98,8 @@ bool acpi_find_rsdp() {
 	int phase = 0;
 	char *cur, *end;
 
-	cur = (char*)ADD2PTR(ebda, KERNEL_VIRT_ADDR);
-	end = (char*)ADD2PTR(ebda, 1024);
+	cur = (char*)ADDPTRS(ebda, KERNEL_VIRT_ADDR);
+	end = (char*)ADDPTRS(ebda, 1024);
 
 	while(phase < 2) {
 
@@ -107,8 +109,8 @@ bool acpi_find_rsdp() {
 
 			if (phase == 1) {
 
-				cur = (char*)ADD2PTR(0xE0000, KERNEL_VIRT_ADDR);
-				end = (char*)ADD2PTR(cur, 0x20000);
+				cur = (char*)ADDPTRS(0xE0000, KERNEL_VIRT_ADDR);
+				end = (char*)ADDPTRS(cur, 0x20000);
 			}
 		}
 
@@ -131,13 +133,13 @@ void acpi_process_madt(ACPI_TABLE *madt) {
 	APIC_TABLE *apic_table;
 
 	remaining_bytes = madt->length - 44;
-	apic_table = (APIC_TABLE*)ADD2PTR(madt, 44);
+	apic_table = (APIC_TABLE*)ADDPTRS(madt, 44);
 
 	do { 
 
 		remaining_bytes -= apic_table->length;
 
-		printf(KERNEL_INFO, "Type: %d, L: %d  ", (int)apic_table->type, (int)apic_table->length);
+		//printf(KERNEL_INFO, "Type: %d, L: %d  ", (int)apic_table->type, (int)apic_table->length);
 
 		switch(apic_table->type) {
 
@@ -148,25 +150,33 @@ void acpi_process_madt(ACPI_TABLE *madt) {
 		} break;
 		case 1:
 		{
-			//printf(KERNEL_INFO, "IOAPIC_ID: %d, Addr: %x, GSIBase: %d", (int)apic_table->info.ioapic.id, (int)apic_table->info.ioapic.address, (int)apic_table->info.ioapic.gsi_base);
-			ioapic_base_register = (int)apic_table->info.ioapic.address;
+			printf(KERNEL_INFO, "IOAPIC_ID: %d, Addr: %x, GSIBase: %d", (int)apic_table->info.ioapic.id, (int)apic_table->info.ioapic.address, (int)apic_table->info.ioapic.gsi_base);
+            ioapic_allocate(apic_table->info.ioapic.id,
+                            (u32)apic_table->info.ioapic.address,
+                            (int)apic_table->info.ioapic.gsi_base);
 		} break;
 		case 2:
 		{
-			//printf(KERNEL_INFO, "Src: %d, GSI: %d, Flags: %d", (int)apic_table->info.int_src_override.source, (int)apic_table->info.int_src_override.gsi, (int)apic_table->info.int_src_override.flags);
+			printf(KERNEL_INFO, "Bus: %d, Src: %d, GSI: %d, Flags: %d", (int)apic_table->info.int_src_override.bus, (int)apic_table->info.int_src_override.source, (int)apic_table->info.int_src_override.gsi, (int)apic_table->info.int_src_override.flags);
+
+            interrupt_set_override(apic_table->info.int_src_override.bus,
+                                   apic_table->info.int_src_override.source,
+                                   apic_table->info.int_src_override.gsi,
+                                   apic_table->info.int_src_override.flags);
+
 		} break;
 		case 3:
 		{
-			//printf(KERNEL_INFO, "Flags: %x GSI: %d", (int)apic_table->info.nmi_source.flags, (int)apic_table->info.nmi_source.gsi);
+			printf(KERNEL_INFO, "Flags: %x GSI: %d", (int)apic_table->info.nmi_source.flags, (int)apic_table->info.nmi_source.gsi);
 		} break;
 		case 4:
 		{
-			//printf(KERNEL_INFO, "UID: %d, lint: %d, flags: %d", (int)apic_table->info.lapic_nmi.uid, (int)apic_table->info.lapic_nmi.lapic_lint, (int)apic_table->info.lapic_nmi.flags);
+			printf(KERNEL_INFO, "UID: %d, lint: %d, flags: %d", (int)apic_table->info.lapic_nmi.uid, (int)apic_table->info.lapic_nmi.lapic_lint, (int)apic_table->info.lapic_nmi.flags);
 		} break;
 
 		}
 
-		apic_table = (APIC_TABLE*)ADD2PTR(apic_table, apic_table->length);
+		apic_table = (APIC_TABLE*)ADDPTRS(apic_table, apic_table->length);
 	} while(remaining_bytes);
 }
 
@@ -174,6 +184,7 @@ void acpi_process_table(ACPI_TABLE *acpi_table) {
 
 	char sig[5];
 
+    map_kernel_linear_with_pagetable((addr_t)acpi_table, acpi_table->length, PTE_PRESENT);
 	for(int i=0;i<4;i++)
 		sig[i] = acpi_table->signature[i];
 	sig[4] = 0;
@@ -196,14 +207,16 @@ void acpi_init() {
 		return;
 	}
 	
-	rsdt = (ACPI_TABLE*)ADD2PTR(rsdp->rsdt_address, KERNEL_VIRT_ADDR);
+	rsdt = (ACPI_TABLE*)ADDPTRS(rsdp->rsdt_address, KERNEL_VIRT_ADDR);
+    map_kernel_linear_with_pagetable((addr_t)rsdt, sizeof(ACPI_TABLE), PTE_PRESENT);
+    map_kernel_linear_with_pagetable((addr_t)rsdt, rsdt->length, PTE_PRESENT);
 	printf(KERNEL_INFO, "RSDT: %p\n", (long)rsdt-KERNEL_VIRT_ADDR);
 	printf(KERNEL_INFO, "RSDT Length: %d, %d\n", rsdt->length, sizeof(ACPI_TABLE));
 
 	num_acpi_tables = (rsdt->length - sizeof(ACPI_TABLE)) / sizeof(void*);
-	acpi_tables = (ACPI_TABLE**)ADD2PTR(rsdt, sizeof(ACPI_TABLE));
+	acpi_tables = (ACPI_TABLE**)ADDPTRS(rsdt, sizeof(ACPI_TABLE));
 
 	for(int i=0;i<num_acpi_tables;i++) {
-		acpi_process_table((ACPI_TABLE*)ADD2PTR(acpi_tables[i], KERNEL_VIRT_ADDR));
-	}
+		acpi_process_table((ACPI_TABLE*)ADDPTRS(acpi_tables[i], KERNEL_VIRT_ADDR));
+    }
 }

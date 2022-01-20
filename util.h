@@ -14,8 +14,8 @@
 
 #include "type.h"
 
-#define memset(address, size, c) {for(int i=0;i<(int)size;i++) ((char*)address)[i]=c;}
-#define memcpy(dest, src, size) {for(int i=0;i<size;i++) ((char*)dest)[i]=((char*)src)[i];}
+#define memset(address, c, size) {for(u32 i=0;i<(size);i++) ((char*)address)[i]=c;}
+#define memcpy(dest, src, size) {for(u32 i=0;i<(size);i++) ((char*)dest)[i]=((char*)src)[i];}
 
 #define UNUSED(x) (void)(x)
 
@@ -28,11 +28,20 @@ int strlen(char *p);
 
 #define memcmp(p1, p2, num) strncmp((const char *)p1, (const char *)p2, num)
 
-void itoa(int val, char *str, int base);
-void ltoa(long val, char *str, int base);
-void lltoa(long long val, char *str, int base);
-void ptrtoa(void *val, char *str, bool maxfill);
+void _itoa(int val, char *str, int base, bool not_signed);
+void _lltoa(long long value, char *str, int base, bool maxfill);
+void ptrtoa(void *val, char *str);
 void sprintf(char *buf, char *fmt, ...);
+
+#ifdef CONFIG_64
+#define ltoa(v,s,b) lltoa((long)v,s,b)
+#else
+#define ltoa(v,s,b) itoa((int)v,s,b)
+#endif
+
+#define itoa(v,s,b) _itoa(v,s,b,false)
+#define lltoa(v,s,b) _lltoa(v,s,b,false)
+#define ptrtoa64(v,s) _lltoa(v,s,16,sizeof(long long),true)
 
 typedef enum _va_type {
 
@@ -46,5 +55,19 @@ typedef enum _va_type {
 	VA_SHORT = 7,
 	VA_USHORT = 8
 } va_type;
+
+struct list {
+    struct list *prev;
+    struct list *next;
+};
+
+#define list_init(l)  ((l)->prev = (l)->next = l)
+#define list_insert_tail(h,l) {(l)->next = h; (l)->prev = (h)->prev; (h)->prev->next = l; (h)->prev = l;}
+#define list_next_entry(l) (((l)->next == l) ? NULL : (l)->next)
+#define list_empty(l) ((l)->next == (l)->prev)
+#define list_remove_entry(l) {if (!list_empty(l)) { (l)->next->prev = (l)->prev; (l)->prev->next = (l)->next; }}
+
+#define offset_of(s,m) (&((s *)(0))->m)
+#define container_of(l,s,m) ((s*)((long)l-(long)offset_of(s,m)))
 
 #endif // _UTIL_H

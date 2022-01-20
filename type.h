@@ -20,8 +20,6 @@ typedef char byte;
 
 #define NULL (void*)0
 
-#define ADD2PTR(x, y) ((long)(x) + (long)(y))
-
 typedef unsigned char u8;
 typedef char s8;
 typedef unsigned short u16;
@@ -32,5 +30,21 @@ typedef long long s64;
 typedef unsigned long long u64;
 
 typedef u32 size_t;
+
+typedef u64 addr64_t;
+
+#define ALIGN_LONG(size) ((size + sizeof(long) - 1) & ~(sizeof(long) - 1))
+
+#define ADDPTRS(x, y) ((long)(x) + (long)(y))
+typedef long addr_t;
+#ifdef CONFIG_64
+#define ADDPTRS64 ADDPTRS
+#define PTR64(x) (x)
+#define PTR(x) ((u64)x)
+#else
+#define ADDPTRS64(x, y) ((u64)(x) + (u64)(y))
+#define PTR64(x) ((u64)(u32)(x))
+#define PTR(x) ((u32)x)
+#endif
 
 #endif

@@ -12,6 +12,8 @@
 #ifndef SMP_H
 #define SMP_H
 
+#define AP_INIT_PHYS_TEXT 0x7c00
+
 void smp_start();
 
 #endif

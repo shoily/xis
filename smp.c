@@ -18,8 +18,7 @@
 #include "usermode.h"
 #include "page32.h"
 #include "debug.h"
-
-#define AP_INIT_PHYS_TEXT 0x7c00
+#include "smp.h"
 
 extern int init_ap;
 extern int init_ap_size;
@@ -57,7 +56,8 @@ void finish_smp_initialization(int smp_id) {
 	lapic_write_register(LAPIC_INITIAL_COUNTER_REG, LAPIC_COUNTER_VALUE);
 
 	// clear identity mapping
-    ((int*)((int)&_kernel_pg_dir+(CUR_CPU*PAGE_SIZE)))[0] = 0;
+    GET_CURCPU_PGDIR[0] = 0;
+    //((int*)((int)&_kernel_pg_dir+(CUR_CPU*PAGE_SIZE)))[0] = 0;
     __asm__ __volatile__("invlpg (0);"
                          : : :
                          );

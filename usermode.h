@@ -12,8 +12,9 @@
 #ifndef _USERMODE_H
 #define _USERMODE_H
 
-#define USER_MODE_VIRT_TEXT  0x10000000
-#define USER_MODE_VIRT_STACK 0x10003000
+// USER_MODE_VIRT_TEXT has to match with the value in um.ld
+#define USER_MODE_VIRT_TEXT  0x10003000
+#define USER_MODE_VIRT_STACK 0x10001000
 
 void initialize_usermode();
 void switch_to_um();

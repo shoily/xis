@@ -35,6 +35,7 @@ _start:
     movl %eax, _kernel_pg_dir-KERNEL_VIRT_ADDR+KERNEL_PGDIR_ENTRY
 
     // populating page table entries that maps 4MB spaces starting from memory address 0
+    // both page directory and page table entry should be located in first 4 GB.
     cld
     movl $0x3, %eax
     movl $1024, %ecx

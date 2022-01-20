@@ -44,6 +44,5 @@ void lapic_switch(bool enable);
 int lapic_read_register(int lapic_register);
 void lapic_write_register(int lapic_register, int value);
 void lapic_enable_timer();
-void ioapic_init();
 
 #endif

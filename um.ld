@@ -24,7 +24,7 @@ PHDRS {
 
 SECTIONS
 {
-    . = 0x10000000;
+    . = 0x10003000;
     .text :
     {*(.text); } : text
     .data :

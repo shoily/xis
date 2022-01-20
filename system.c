@@ -23,10 +23,7 @@
 #define PIT_FREQUENCY 1000
 
 short *vga_buf_ptr;
-//int vga_buffer_line = 0;
-
 spinlock spinlock_vga;
-
 int ebda;
 
 void vga_init() {
@@ -86,17 +83,18 @@ void print_vga_fixed(char *c, int col, int row) {
 //
 void dump_e820() {
 
-    int i;
-    int e820_count= *((int *) E820_MAP_VIRT_COUNT);
+    u32 i;
+    u32 e820_count= *((int *) E820_MAP_VIRT_COUNT);
     struct e820_map *e820 = (struct e820_map *) E820_MAP_VIRT_ADDRESS;
 
-    printf(KERNEL_DEBUG, "E820 map\n");
+    printf(KERNEL_DEBUG, "E820 map at %p\n", e820);
     printf(KERNEL_DEBUG, "===========================================================\n");
 
     printf(KERNEL_DEBUG, "Base address | Length | Type\n");
 
     for(i=0;i<e820_count;i++, e820++) {
-        printf(KERNEL_DEBUG, "0x%p | 0x%p | %d %s\n", (long)e820->base, (long)e820->length, e820->type, (e820->type == 1) ? " Free memory" : " Reserved memory");
+        // CONVERT_64
+        printf(KERNEL_DEBUG, "0x%llx | 0x%llx | %d %s\n", (long long)e820->base, (long long)e820->length, e820->type, (e820->type == 1) ? " Free memory" : " Reserved memory");
     }
 }
 

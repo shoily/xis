@@ -53,6 +53,7 @@ extern bool ioapic_initialized;
 extern int lapic_base_register;
 
 void common_trap_handler();
+void trap_handler_14();
 void sys_call_handler_128();
 
 void irq_handler_0();
@@ -77,7 +78,19 @@ void irq_handler_15();
 __attribute__((regparm(0))) void trap_handler(struct regs_frame *rf) {
 
 #ifdef DEBUG_TRAP
-    printf(KERNEL_DEBUG, "Trap handler\ngs: %x fs: %x es: %x ds: %x code_nr: %x cs: %x eip: %x ss: %x esp: %x\n", rf->gs, rf->fs, rf->es, rf->ds, rf->code_nr, rf->cs, rf->eip, rf->ss, rf->esp);
+    printf(KERNEL_DEBUG, "Trap handler\ngs: %x fs: %x es: %x ds: %x code_nr: %x cs: %x eip: %x ss: %x esp: %x ", rf->gs, rf->fs, rf->es, rf->ds, rf->code_nr, rf->cs, rf->eip, rf->ss, rf->esp);
+    if (rf->trap_nr == 14) {
+        u32 cr2;
+        __asm__ __volatile__(
+            "mov %%cr2, %%eax;"
+            "mov %%eax, %0;"
+            : "=m"(cr2)
+            :
+            : "%eax");
+        printf(KERNEL_DEBUG, " CR2 reg: %x\n", cr2);
+    } else {
+        printf(KERNEL_DEBUG, "\n");
+    }
 #else
 	UNUSED(rf);
 #endif
@@ -165,7 +178,7 @@ __attribute__((regparm(0))) void common_sys_call_handler(struct regs_frame *rf) 
 void initializeLDT32() {
 
     // setup LDT data structure
-    memset(ldt, sizeof(ldt), 0);
+    memset(ldt, 0, sizeof(ldt));
 
     SET_USER_CODE_SEGMENT_IN_LDT(ldt, 0xfffff, 0);
     SET_USER_DATA_SEGMENT_IN_LDT(ldt, 0xfffff, 0);
@@ -189,7 +202,7 @@ void loadLDT32() {
 void initializeGDT32() {
 
     // setup GDT data structure
-    memset(gdt, LAST_SEG, 0);
+    memset(gdt, 0, LAST_SEG);
     gdt_desc.size = LAST_SEG - 1;
     gdt_desc.gdt = gdt;
 
@@ -222,7 +235,7 @@ void initializeTSS32(int smp_id) {
 
     // setup TSS data structure
 
-    memset(&tss[smp_id], sizeof(struct tss_entry), 0);
+    memset(&tss[smp_id], 0, sizeof(struct tss_entry));
 
     tss[smp_id].esp0 = ((int)&_kernel_stack_0_start)+(smp_id*KERNEL_STACK_SIZE);
     tss[smp_id].ss0 = KERNEL_DATA_SEG;
@@ -243,7 +256,7 @@ void loadTSS32(int smp_id) {
 void initializeIDT32() {
 
     // setup IDT data structure
-    memset(idt, sizeof(idt), 0);
+    memset(idt, 0, sizeof(idt));
     idt_desc.size = sizeof(idt) - 1;
     idt_desc.idt = idt;
 
@@ -277,7 +290,7 @@ void initializeIDT32() {
     SET_TRAP_GATE(idt, 11, common_trap_handler);
     SET_TRAP_GATE(idt, 12, common_trap_handler);
     SET_TRAP_GATE(idt, 13, common_trap_handler);
-    SET_TRAP_GATE(idt, 14, common_trap_handler);
+    SET_TRAP_GATE(idt, 14, trap_handler_14);
 
     SET_TRAP_GATE(idt, 128, sys_call_handler_128);
 }
@@ -300,7 +313,7 @@ void set_idt(int vector, idt_function_type idt_function) {
 
 void setup32() {
 
-	memset(sched_tick, sizeof(sched_tick), 0);
+	memset(sched_tick, 0, sizeof(sched_tick));
 
     initializeGDT32();
 	loadGDT32();

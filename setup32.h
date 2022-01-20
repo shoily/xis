@@ -100,7 +100,7 @@ struct tss_entry {
 
 #define SET_GDT_ENTRY(g, index, segment_limit, base_address, _type, _system, _dpl, _db, _granularity) { \
         struct gdt_entry *entry = g+index;                              \
-        memset(entry, sizeof(struct gdt_entry), 0);                     \
+        memset(entry, 0, sizeof(struct gdt_entry));                   \
         entry->segment_limit_low = segment_limit & 0xffff;              \
         entry->segment_limit_high = (segment_limit >> 16) & 0xf;        \
         entry->base_address_low = base_address & 0xffff;                \
@@ -131,7 +131,7 @@ struct tss_entry {
 
 #define SET_IDT_ENTRY(idt, index, offset, _segment_selector, _type, _dpl, _present) { \
         struct idt_entry *entry = idt+index;                            \
-        memset(entry, sizeof(struct idt_entry), 0);                     \
+        memset(entry, 0, sizeof(struct idt_entry));                   \
         entry->offset_low = (int)offset & 0xffff;                       \
         entry->offset_high = ((int)offset >> 16) & 0xffff;              \
         entry->segment_selector = _segment_selector;                    \
@@ -153,6 +153,7 @@ struct tss_entry {
     }
 
 struct regs_frame {
+    u32 trap_nr;
     u32 gs;
     u32 fs;
     u32 es;
