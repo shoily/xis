@@ -92,7 +92,7 @@ void init_lapic() {
     read_msr(0x1b, &eax, &edx);
     lapic_base_register = eax & 0xfffff000;
 
-    build_pagetable((pgd_t*)&_kernel_pg_dir, pgtable, lapic_base_register, lapic_base_register, PAGE_SIZE, PGD_PRESENT | PGD_WRITE, PTE_PRESENT | PTE_WRITE);
+    build_pagetable(0, pgtable, lapic_base_register, lapic_base_register, PAGE_SIZE, PGD_PRESENT | PGD_WRITE, PTE_PRESENT | PTE_WRITE);
 
 	printf(KERNEL_INFO, "Local APIC address: %p\n", eax);
 

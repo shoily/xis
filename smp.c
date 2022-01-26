@@ -24,23 +24,38 @@ extern int init_ap;
 extern int init_ap_size;
 
 extern int lapic_base_register;
-
-extern int _kernel_pg_dir;
 extern int _kernel_pg_table_0;
-
 extern int _kernel_stack_0_start;
 
-int smp_bits = 0;
+int smp_bits = 1;
 int smp_nums = 0;
+int smp_on_hold = 0;
+bool smp_init_waiting;
 
 spinlock spinlock_smp;
 
 void finish_smp_initialization(int smp_id) {
+    pgd_t *pgd;
+    int i;
 
+retry:
     spinlock_lock(&spinlock_smp);
+    if (smp_on_hold) {
+        spinlock_unlock(&spinlock_smp);
+        goto retry;
+    }
 
 	smp_nums++;
     smp_bits |= 1 << smp_id;
+
+    if (!smp_init_waiting) {
+        pgd_lock_all();
+        for(i = 1; i < MAX_NUM_SMPS; i++) {
+            pgd = GET_CURCPU_PGDIR;
+            memcpy(pgd, &_kernel_pg_dir, PAGE_SIZE);
+        }
+        pgd_unlock_all();
+    }
 
     spinlock_unlock(&spinlock_smp);
 
@@ -57,7 +72,6 @@ void finish_smp_initialization(int smp_id) {
 
 	// clear identity mapping
     GET_CURCPU_PGDIR[0] = 0;
-    //((int*)((int)&_kernel_pg_dir+(CUR_CPU*PAGE_SIZE)))[0] = 0;
     __asm__ __volatile__("invlpg (0);"
                          : : :
                          );
@@ -86,13 +100,11 @@ void initialize_kernel_pg_tables() {
 		pgd = (pgd_t*)((int)&_kernel_pg_dir + (PAGE_SIZE * i));
 		memcpy(pgd, &_kernel_pg_dir, PAGE_SIZE);
 		// identity mapping for first 4 MB
-		*pgd = *(pgd+(KERNEL_PGDIR_ENTRY/4));
+		*pgd = *(pgd+KERNEL_PGDIR_ENTRY);
 	}
 }
 
 void smp_start() {
-
-    INIT_SPIN_LOCK(&spinlock_smp);
 
 	if (!lapic_present)
 		return;
@@ -110,6 +122,8 @@ void smp_start() {
 
     MFENCE;
 
+    smp_init_waiting = true;
+
     // send INIT IPI to APs
     lapic_write_register(LAPIC_ICR_1, 0x000c4500);
     lapic_write_register(LAPIC_ICR_2, 0);
@@ -119,6 +133,10 @@ void smp_start() {
     lapic_write_register(LAPIC_ICR_1, 0x000c4600 | (AP_INIT_PHYS_TEXT >> 12));
     lapic_write_register(LAPIC_ICR_2, 0);
     pit_wait_ms(200);
+
+    spinlock_lock(&spinlock_smp);
+    smp_init_waiting = false;
+    spinlock_unlock(&spinlock_smp);
 
     printf(KERNEL_INFO, "Number of APs: %d\n", smp_nums);
     printf(KERNEL_INFO, "SMP bits: %x\n", smp_bits);

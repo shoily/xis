@@ -22,8 +22,6 @@ char __attribute__((aligned(4096))) um_pg_table[MAX_NUM_SMPS][PAGE_SIZE];
 #define USER_MODE_STACK_SIZE 8192
 char __attribute__((aligned(8))) user_mode_stack[MAX_NUM_SMPS][USER_MODE_STACK_SIZE];
 
-extern int _kernel_pg_dir;
-
 extern int init_um;
 extern int init_um_size;
 
@@ -59,14 +57,14 @@ void initialize_usermode() {
     
     pgtable[0] = (pte_t*)&um_pg_table[CUR_CPU][0];
 
-    build_pagetable((pgd_t*)((int)&_kernel_pg_dir + (PAGE_SIZE*CUR_CPU)),
+    build_pagetable(CUR_CPU,
 					pgtable,
 					(int)&init_um-KERNEL_VIRT_ADDR,
 					USER_MODE_VIRT_TEXT,
 					(int)init_um_size,
 					PGD_PRESENT | PGD_WRITE | PGD_USER, PTE_PRESENT | PTE_WRITE | PTE_USER);
 
-	build_pagetable((pgd_t*)((int)&_kernel_pg_dir + (PAGE_SIZE*CUR_CPU)),
+	build_pagetable(CUR_CPU,
 					pgtable,
 					(int)&user_mode_stack[CUR_CPU][0]-KERNEL_VIRT_ADDR,
 					USER_MODE_VIRT_STACK,

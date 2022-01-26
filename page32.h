@@ -19,7 +19,12 @@ typedef u32 pte_t;
 typedef u32 pgd_t;
 typedef u32 pfn_t;
 
+extern addr_t _kernel_pg_dir;
+
+#define KERNEL_PGDIR_ENTRY KERNEL_PGDIR_OFFSET/sizeof(pgd_t)
+
 #define GET_CURCPU_PGDIR ((pgd_t*)((int)&_kernel_pg_dir + (PAGE_SIZE*CUR_CPU)))
+#define GET_CPU_PGDIR(cpuid) ((pgd_t*)((int)&_kernel_pg_dir + (PAGE_SIZE*(cpuid))))
 
 #define PGD_PRESENT   1
 #define PGD_WRITE     2
@@ -31,13 +36,16 @@ typedef u32 pfn_t;
 
 #define PAGE_MASK ~(PAGE_SIZE-1)
 #define PGD_MASK ~(PGD_SIZE-1)
+#define PGD_FLAG_MASK 0x1FFF
 
 #define ALIGN_PGD(m) (((m)+PGD_SIZE-1)&PGD_MASK)
 #define ALIGN_PAGE(m) (((m)+PAGE_SIZE-1)&PAGE_MASK)
 
-void build_pagetable(pgd_t *pgdir, pte_t **pgtable, u32 phys_addr, u32 start, u32 length, u32 pgd_flags, u32 pte_flags);
-void map_kernel_linear(pte_t **pgtable, addr_t virt_addr, u32 length, u32 pte_flags);
+void build_pagetable(u32 cpuid, pte_t **pgtable, u32 phys_addr, u32 start, u32 length, u32 pgd_flags, u32 pte_flags);
 pfn_t page_getpfn(void *addr);
 void map_kernel_linear_with_pagetable(addr_t virt_addr, u32 length, u32 pte_flags);
+void pgd_lock_init();
+void pgd_lock_all();
+void pgd_unlock_all();
 
 #endif

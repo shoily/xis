@@ -20,14 +20,19 @@
 #include "acpi.h"
 #include "debug.h"
 #include "interrupt.h"
+#include "lock.h"
 
 //
 //  Start kernel routine
 //
 
+extern spinlock spinlock_smp;
+
 int start_kernel(void) {
 
 	vga_init();
+    INIT_SPIN_LOCK(&spinlock_smp);
+    pgd_lock_init();
     if(mem_init())
         return -1;
 	debug_init();

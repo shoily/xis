@@ -6,6 +6,7 @@
 /*  Author: Shoily O Rahman <shoily@gmail.com>                               */
 /*                                                                           */
 /*  Date: Oct 16, 2020                                                       */
+/*        Lock order - spinlock_smp->lock_pgd                                */
 /*                                                                           */
 /*****************************************************************************/
 
@@ -30,3 +31,4 @@ void spinlock_unlock(spinlock *lock) {
                          :
                          : "cc", "memory" );
 }
+

@@ -32,7 +32,7 @@ _start:
     movl $_kernel_pg_table_0-KERNEL_VIRT_ADDR, %edx
     leal 0x1(%edx), %eax
     movl %eax, _kernel_pg_dir-KERNEL_VIRT_ADDR
-    movl %eax, _kernel_pg_dir-KERNEL_VIRT_ADDR+KERNEL_PGDIR_ENTRY
+    movl %eax, _kernel_pg_dir-KERNEL_VIRT_ADDR+KERNEL_PGDIR_OFFSET
 
     // populating page table entries that maps 4MB spaces starting from memory address 0
     // both page directory and page table entry should be located in first 4 GB.
