@@ -213,5 +213,5 @@ void bda_read_table() {
 
 	ebda = ((int)(unsigned short)*p) << 4;
 
-	printf(KERNEL_INFO, "EBDA: %x\n", ebda);
+	printf(KERNEL_INFO, "EBDA: %x ", ebda);
 }

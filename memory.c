@@ -18,7 +18,6 @@
 #include "memory.h"
 #include "system.h"
 #include "util.h"
-#include "lock.h"
 #include "page32.h"
 #include "smp.h"
 
@@ -54,20 +53,6 @@ struct cache_desc {
     // bitmap
 };
 
-struct kpage {
-    // CONVERT_64
-    u8 npages;
-    u8 flags;
-    u32 refcount;
-    void *virt_addr;
-    spinlock lock;
-    union {
-        struct cache_desc *desc; // for actual cache page
-        u32 free_slot_count; // for cache metadata
-        struct list adjacent_pages;
-    };
-};
-
 struct cache_fixed {
     u32 size;
     u32 chunk_size;
@@ -83,10 +68,6 @@ enum KPAGE_ALLOC_MODE {
 
 #define CACHE_MIN_CHUNK_SIZE (int)sizeof(long)
 #define CACHE_MAX_NUM 10
-
-#define ERR_NOMEM -1
-#define ERR_SUCCESS 0
-#define ERR_RETRY 1
 
 spinlock spinlock_page_alloc;
 struct mem_cache cache[CACHE_MAX_NUM] = {0};
@@ -151,15 +132,15 @@ s32 mem_init() {
     }
 
     if (nr_pgtbls)
-        map_kernel_linear_with_pagetable(ADDPTRS(KERNEL_VIRT_ADDR, INITIAL_KMAPPED_MEMORY), nr_pgtbls << PAGE_SHIFT, PTE_PRESENT | PTE_WRITE);
+        map_kernel_linear_with_pagetable(ADDPTRS(KERNEL_VIRT_ADDR, INITIAL_KMAPPED_MEMORY), nr_pgtbls << PAGE_SHIFT, PTE_PRESENT | PTE_WRITE, false);
 
     if (ADDPTRS(end_kernel_pgtbls, kpages_memory) > ADDPTRS(KERNEL_VIRT_ADDR, INITIAL_KMAPPED_MEMORY)) {
-        if ((addr_t)kpages < ADDPTRS(KERNEL_VIRT_ADDR, INITIAL_KMAPPED_MEMORY))
+        if ((addr_t)kpages < (addr_t)ADDPTRS(KERNEL_VIRT_ADDR, INITIAL_KMAPPED_MEMORY))
             kpage_beyond_mapping = ADDPTRS(KERNEL_VIRT_ADDR, INITIAL_KMAPPED_MEMORY);
         else
             kpage_beyond_mapping = (addr_t)kpages;
 
-        map_kernel_linear_with_pagetable(kpage_beyond_mapping, kpages_memory, PTE_PRESENT | PTE_WRITE);
+        map_kernel_linear_with_pagetable(kpage_beyond_mapping, kpages_memory, PTE_PRESENT | PTE_WRITE, false);
    }
 
     end_kernel_data = ADDPTRS(kpages, kpages_memory);
@@ -213,12 +194,12 @@ s32 mem_init() {
     kpages[BASE_WRITE_PAGE >> PAGE_SHIFT].flags &= ~KPAGE_FLAGS_FREE;
     kpages[BASE_WRITE_PAGE >> PAGE_SHIFT].flags |= (KPAGE_FLAGS_ALLOCATED | KPAGE_FLAGS_NOT_FREEABLE);
 
-    map_kernel_linear_with_pagetable(ADDPTRS(KERNEL_VIRT_ADDR, BASE_WRITE_PAGE), PAGE_SIZE, PTE_PRESENT | PTE_WRITE);
+    map_kernel_linear_with_pagetable(ADDPTRS(KERNEL_VIRT_ADDR, BASE_WRITE_PAGE), PAGE_SIZE, PTE_PRESENT | PTE_WRITE, false);
 
     for(mp_addr = AP_INIT_PHYS_TEXT & PAGE_MASK; mp_addr < ALIGN_PAGE(AP_INIT_PHYS_TEXT + init_ap_size); mp_addr += PAGE_SIZE) {
         kpages[mp_addr >> PAGE_SHIFT].flags &= ~KPAGE_FLAGS_FREE;
         kpages[mp_addr >> PAGE_SHIFT].flags |= (KPAGE_FLAGS_ALLOCATED | KPAGE_FLAGS_NOT_FREEABLE);
-        map_kernel_linear_with_pagetable(mp_addr, PAGE_SIZE, PTE_PRESENT | PTE_WRITE);
+        map_kernel_linear_with_pagetable(mp_addr, PAGE_SIZE, PTE_PRESENT | PTE_WRITE, false);
     }
 
     kpage_last = kpage-1;
@@ -501,9 +482,6 @@ retry:
     return (void*)ADDPTRS(page, first_bit * cache->size);
 }
 
-//void page_free_pages(struct kpage *kpage) {
-//}
-
 void mem_cache_free(void *ptr) {
     struct kpage *kpage;
 
@@ -535,7 +513,11 @@ void *page_alloc_kmap_linear(u32 npages) {
         return NULL;
 
     addr = ADDPTRS((page-kpages) << PAGE_SHIFT, KERNEL_VIRT_ADDR);
-    map_kernel_linear_with_pagetable(addr, npages << PAGE_SHIFT, PTE_PRESENT | PTE_WRITE);
+    map_kernel_linear_with_pagetable(addr, npages << PAGE_SHIFT, PTE_PRESENT | PTE_WRITE, false);
     memset(addr, 0, PAGE_SIZE * npages);
     return (void*)addr;
+}
+
+void page_free(void *addr) {
+    (void*)addr++;
 }

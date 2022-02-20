@@ -16,13 +16,13 @@
 #include "setup32.h"
 #include "debug.h"
 
-int lapic_present;
+int lapic_present = 0;
 int lapic_base_register;
 int lapic_id;
 
 extern addr_t _kernel_pg_dir;
 
-char __attribute__((aligned(4096))) lapic_pg_table[4096];
+// char __attribute__((aligned(4096))) lapic_pg_table[4096];
 
 void read_msr(int msr, int *eax, int *edx) {
 
@@ -65,36 +65,35 @@ void calibrate_lapic_timer() {
 void init_lapic() {
 
     int eax, edx;
-    pte_t *pgtable[1];
-
-	lapic_present = 0;
+    int local_lapic_present = 0;
 
     __asm__ __volatile__("movl $1, %%eax;"
                          "cpuid;"
                          "andl $0x200, %%edx;"
                          "shrl $9, %%edx;"
                          "movl %%edx, %0;"
-                         : "=r" (lapic_present)
+                         : "=r" (local_lapic_present)
                          :
                          : "%eax", "%edx"
                          );
 
-	printf(KERNEL_INFO, "Local APIC present: %d\n", lapic_present);
+	printf(KERNEL_INFO, "Local APIC present: %d ", local_lapic_present);
 
-    if (!lapic_present) {
-
+    if (!local_lapic_present) {
         return;
     }
 
-    memset(lapic_pg_table, 0, sizeof(lapic_pg_table));
-    pgtable[0] = (pte_t*)lapic_pg_table;
+    // memset(lapic_pg_table, 0, sizeof(lapic_pg_table));
+    // pgtable[0] = (pte_t*)lapic_pg_table;
 
     read_msr(0x1b, &eax, &edx);
     lapic_base_register = eax & 0xfffff000;
 
-    build_pagetable(0, pgtable, lapic_base_register, lapic_base_register, PAGE_SIZE, PGD_PRESENT | PGD_WRITE, PTE_PRESENT | PTE_WRITE);
+    map_kernel_with_pagetable(lapic_base_register, lapic_base_register, PAGE_SIZE, PTE_WRITE, MAP_LOCAL_CPU);
 
-	printf(KERNEL_INFO, "Local APIC address: %p\n", eax);
+    lapic_present = local_lapic_present;
+
+	printf(KERNEL_INFO, "Local APIC address: %p ", eax);
 
     lapic_id = lapic_read_register(LAPIC_ID_REG) >> 24;
 

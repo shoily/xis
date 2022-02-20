@@ -38,14 +38,24 @@ extern addr_t _kernel_pg_dir;
 #define PGD_MASK ~(PGD_SIZE-1)
 #define PGD_FLAG_MASK 0x1FFF
 
+#define MAP_USER 1
+#define MAP_LOCAL_CPU 2
+#define MAP_PGD_LOCKED 4
+
 #define ALIGN_PGD(m) (((m)+PGD_SIZE-1)&PGD_MASK)
 #define ALIGN_PAGE(m) (((m)+PAGE_SIZE-1)&PAGE_MASK)
 
-void build_pagetable(u32 cpuid, pte_t **pgtable, u32 phys_addr, u32 start, u32 length, u32 pgd_flags, u32 pte_flags);
+void build_pagetable(u32 cpuid, pte_t **pgtable, addr_t phys_addr, addr_t start, u32 length, u32 pgd_flags, u32 pte_flags, u32 map_flags);
+void unmap_pagetable(u32 cpuid, pte_t **pgtable, addr_t start, u32 length, u32 map_flags);
+void map_kernel_with_pagetable(addr_t virt_addr, addr_t phys_addr, u32 length, u32 pte_flags, u32 map_flags);
+void unmap_kernel_with_pagetable(addr_t virt_addr, u32 length, u32 map_flags);
+int alloc_user_page(addr_t virt_addr, u32 length, u32 pte_flags);
 pfn_t page_getpfn(void *addr);
-void map_kernel_linear_with_pagetable(addr_t virt_addr, u32 length, u32 pte_flags);
 void pgd_lock_init();
-void pgd_lock_all();
-void pgd_unlock_all();
+void pgd_kernel_lock_all();
+void pgd_kernel_unlock_all();
+
+
+#define map_kernel_linear_with_pagetable(v,l,pte_flags,map_flags) map_kernel_with_pagetable((v),(v)-KERNEL_VIRT_ADDR,(l),(pte_flags),(map_flags))
 
 #endif

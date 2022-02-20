@@ -49,12 +49,12 @@ retry:
     smp_bits |= 1 << smp_id;
 
     if (!smp_init_waiting) {
-        pgd_lock_all();
+        pgd_kernel_lock_all();
         for(i = 1; i < MAX_NUM_SMPS; i++) {
             pgd = GET_CURCPU_PGDIR;
             memcpy(pgd, &_kernel_pg_dir, PAGE_SIZE);
         }
-        pgd_unlock_all();
+        pgd_kernel_unlock_all();
     }
 
     spinlock_unlock(&spinlock_smp);
@@ -138,6 +138,6 @@ void smp_start() {
     smp_init_waiting = false;
     spinlock_unlock(&spinlock_smp);
 
-    printf(KERNEL_INFO, "Number of APs: %d\n", smp_nums);
+    printf(KERNEL_INFO, "Number of APs: %d ", smp_nums);
     printf(KERNEL_INFO, "SMP bits: %x\n", smp_bits);
 }

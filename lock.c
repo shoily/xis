@@ -6,7 +6,9 @@
 /*  Author: Shoily O Rahman <shoily@gmail.com>                               */
 /*                                                                           */
 /*  Date: Oct 16, 2020                                                       */
-/*        Lock order - spinlock_smp->lock_pgd                                */
+/*        Lock order -                                                       */
+/*                     spinlock_smp->lock_pgd (kernel)                       */
+/*                     lock_pgd (user)->spinlock_page_alloc                  */
 /*                                                                           */
 /*****************************************************************************/
 

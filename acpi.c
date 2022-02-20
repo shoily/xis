@@ -139,7 +139,7 @@ void acpi_process_madt(ACPI_TABLE *madt) {
 
 		remaining_bytes -= apic_table->length;
 
-		//printf(KERNEL_INFO, "Type: %d, L: %d  ", (int)apic_table->type, (int)apic_table->length);
+		//printf(KERNEL_INFO, "Type: %d, L: %d ", (int)apic_table->type, (int)apic_table->length);
 
 		switch(apic_table->type) {
 
@@ -150,14 +150,14 @@ void acpi_process_madt(ACPI_TABLE *madt) {
 		} break;
 		case 1:
 		{
-			printf(KERNEL_INFO, "IOAPIC_ID: %d, Addr: %x, GSIBase: %d", (int)apic_table->info.ioapic.id, (int)apic_table->info.ioapic.address, (int)apic_table->info.ioapic.gsi_base);
+			printf(KERNEL_INFO, "IOAPIC_ID: %d, Addr: %x, GSIBase: %d ", (int)apic_table->info.ioapic.id, (int)apic_table->info.ioapic.address, (int)apic_table->info.ioapic.gsi_base);
             ioapic_allocate(apic_table->info.ioapic.id,
                             (u32)apic_table->info.ioapic.address,
                             (int)apic_table->info.ioapic.gsi_base);
 		} break;
 		case 2:
 		{
-			printf(KERNEL_INFO, "Bus: %d, Src: %d, GSI: %d, Flags: %d", (int)apic_table->info.int_src_override.bus, (int)apic_table->info.int_src_override.source, (int)apic_table->info.int_src_override.gsi, (int)apic_table->info.int_src_override.flags);
+			printf(KERNEL_INFO, "Bus: %d, Src: %d, GSI: %d, Flags: %d ", (int)apic_table->info.int_src_override.bus, (int)apic_table->info.int_src_override.source, (int)apic_table->info.int_src_override.gsi, (int)apic_table->info.int_src_override.flags);
 
             interrupt_set_override(apic_table->info.int_src_override.bus,
                                    apic_table->info.int_src_override.source,
@@ -167,11 +167,11 @@ void acpi_process_madt(ACPI_TABLE *madt) {
 		} break;
 		case 3:
 		{
-			printf(KERNEL_INFO, "Flags: %x GSI: %d", (int)apic_table->info.nmi_source.flags, (int)apic_table->info.nmi_source.gsi);
+			printf(KERNEL_INFO, "Flags: %x GSI: %d ", (int)apic_table->info.nmi_source.flags, (int)apic_table->info.nmi_source.gsi);
 		} break;
 		case 4:
 		{
-			printf(KERNEL_INFO, "UID: %d, lint: %d, flags: %d", (int)apic_table->info.lapic_nmi.uid, (int)apic_table->info.lapic_nmi.lapic_lint, (int)apic_table->info.lapic_nmi.flags);
+			printf(KERNEL_INFO, "UID: %d, lint: %d, flags: %d ", (int)apic_table->info.lapic_nmi.uid, (int)apic_table->info.lapic_nmi.lapic_lint, (int)apic_table->info.lapic_nmi.flags);
 		} break;
 
 		}
@@ -181,10 +181,9 @@ void acpi_process_madt(ACPI_TABLE *madt) {
 }
 
 void acpi_process_table(ACPI_TABLE *acpi_table) {
-
 	char sig[5];
 
-    map_kernel_linear_with_pagetable((addr_t)acpi_table, acpi_table->length, PTE_PRESENT);
+    map_kernel_linear_with_pagetable((addr_t)acpi_table, acpi_table->length, PTE_PRESENT, false);
 	for(int i=0;i<4;i++)
 		sig[i] = acpi_table->signature[i];
 	sig[4] = 0;
@@ -208,10 +207,10 @@ void acpi_init() {
 	}
 	
 	rsdt = (ACPI_TABLE*)ADDPTRS(rsdp->rsdt_address, KERNEL_VIRT_ADDR);
-    map_kernel_linear_with_pagetable((addr_t)rsdt, sizeof(ACPI_TABLE), PTE_PRESENT);
-    map_kernel_linear_with_pagetable((addr_t)rsdt, rsdt->length, PTE_PRESENT);
-	printf(KERNEL_INFO, "RSDT: %p\n", (long)rsdt-KERNEL_VIRT_ADDR);
-	printf(KERNEL_INFO, "RSDT Length: %d, %d\n", rsdt->length, sizeof(ACPI_TABLE));
+    map_kernel_linear_with_pagetable((addr_t)rsdt, sizeof(ACPI_TABLE), PTE_PRESENT, MAP_LOCAL_CPU);
+    map_kernel_linear_with_pagetable((addr_t)rsdt, rsdt->length, PTE_PRESENT, MAP_LOCAL_CPU);
+	printf(KERNEL_INFO, "RSDT: %p ", (long)rsdt-KERNEL_VIRT_ADDR);
+	printf(KERNEL_INFO, "RSDT Length: %d, %d ", rsdt->length, sizeof(ACPI_TABLE));
 
 	num_acpi_tables = (rsdt->length - sizeof(ACPI_TABLE)) / sizeof(void*);
 	acpi_tables = (ACPI_TABLE**)ADDPTRS(rsdt, sizeof(ACPI_TABLE));
@@ -219,4 +218,5 @@ void acpi_init() {
 	for(int i=0;i<num_acpi_tables;i++) {
 		acpi_process_table((ACPI_TABLE*)ADDPTRS(acpi_tables[i], KERNEL_VIRT_ADDR));
     }
+    printf(KERNEL_INFO, "\n");
 }

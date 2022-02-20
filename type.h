@@ -36,7 +36,7 @@ typedef u64 addr64_t;
 #define ALIGN_LONG(size) ((size + sizeof(long) - 1) & ~(sizeof(long) - 1))
 
 #define ADDPTRS(x, y) ((long)(x) + (long)(y))
-typedef long addr_t;
+typedef unsigned long addr_t;
 #ifdef CONFIG_64
 #define ADDPTRS64 ADDPTRS
 #define PTR64(x) (x)

@@ -16,11 +16,13 @@
 #include "setup32.h"
 #include "system.h"
 #include "debug.h"
+#include "memory.h"
+#include "page32.h"
 
-char __attribute__((aligned(4096))) um_pg_table[MAX_NUM_SMPS][PAGE_SIZE];
+//char __attribute__((aligned(4096))) um_pg_table[MAX_NUM_SMPS][PAGE_SIZE];
 
 #define USER_MODE_STACK_SIZE 8192
-char __attribute__((aligned(8))) user_mode_stack[MAX_NUM_SMPS][USER_MODE_STACK_SIZE];
+//char __attribute__((aligned(8))) user_mode_stack[MAX_NUM_SMPS][USER_MODE_STACK_SIZE];
 
 extern int init_um;
 extern int init_um_size;
@@ -48,26 +50,50 @@ void switch_to_um() {
                          );
 }
 
+void load_usermode_text() {
+    pgd_t *pgd;
+    pte_t *pte;
+    addr_t addr;
+    int chunk;
+    char *s = (char*)&init_um;
+    int length = init_um_size;
+
+    pgd = GET_CPU_PGDIR(CUR_CPU) + ((USER_MODE_VIRT_TEXT >> PGD_SHIFT) & 0x3ff);
+    pte = (pte_t*)ADDPTRS(*pgd & PAGE_MASK, KERNEL_VIRT_ADDR);
+    pte += ((USER_MODE_VIRT_TEXT >> PAGE_SHIFT) & 0x3ff);
+
+    while(length) {
+        addr = (addr_t)ADDPTRS(*pte & PAGE_MASK, KERNEL_VIRT_ADDR);
+        map_kernel_linear_with_pagetable(addr,
+                                         PAGE_SIZE,
+                                         PTE_WRITE,
+                                         MAP_LOCAL_CPU);
+        chunk = length > PAGE_SIZE ? PAGE_SIZE : length;
+        memcpy(addr, s, (unsigned int)chunk);
+        unmap_kernel_with_pagetable(addr, PAGE_SIZE, MAP_LOCAL_CPU);
+        s += chunk;
+        length -= chunk;
+        pte++;
+        if (pte == (pte_t*)ALIGN_PAGE((addr_t)pte)) {
+            pgd++;
+            pte = (pte_t*)ADDPTRS(*pgd & PAGE_MASK, KERNEL_VIRT_ADDR);
+        }
+    }
+}
+
 void initialize_usermode() {
+    int err;
 
-    pte_t *pgtable[1];
+    if ((err = alloc_user_page(USER_MODE_VIRT_STACK, USER_MODE_STACK_SIZE, PTE_WRITE)) != 0) {
+        printf(KERNEL_ERR, "alloc_user_page failed for stack: %d\n", err);
+        return;
+    }
 
-    memset(&um_pg_table[CUR_CPU][0], 0, PAGE_SIZE);
-    memset(&user_mode_stack[CUR_CPU][0], 0, USER_MODE_STACK_SIZE);
-    
-    pgtable[0] = (pte_t*)&um_pg_table[CUR_CPU][0];
+    if ((err = alloc_user_page(USER_MODE_VIRT_TEXT, ALIGN_PAGE(init_um_size), 0)) != 0) {
+        printf(KERNEL_ERR, "alloc_user_page failed for text section: %d\n", err);
+        page_free((void *)USER_MODE_VIRT_STACK);
+        return;
+    }
 
-    build_pagetable(CUR_CPU,
-					pgtable,
-					(int)&init_um-KERNEL_VIRT_ADDR,
-					USER_MODE_VIRT_TEXT,
-					(int)init_um_size,
-					PGD_PRESENT | PGD_WRITE | PGD_USER, PTE_PRESENT | PTE_WRITE | PTE_USER);
-
-	build_pagetable(CUR_CPU,
-					pgtable,
-					(int)&user_mode_stack[CUR_CPU][0]-KERNEL_VIRT_ADDR,
-					USER_MODE_VIRT_STACK,
-					USER_MODE_STACK_SIZE,
-					PGD_PRESENT | PGD_WRITE | PGD_USER, PTE_PRESENT | PTE_WRITE | PTE_USER);
+    load_usermode_text();
 }

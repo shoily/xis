@@ -16,6 +16,7 @@
 #include "apic.h"
 #include "smp.h"
 #include "debug.h"
+#include "page32.h"
 
 // GDT data
 struct gdt_entry __attribute__((aligned(8))) gdt[LAST_SEG/8];
@@ -46,7 +47,7 @@ struct tss_entry __attribute__((aligned(4096))) tss[MAX_NUM_SMPS];
 int sched_tick[MAX_NUM_SMPS];
 
 extern int _kernel_stack_0_start;
-extern int _kernel_pg_dir;
+extern addr_t _kernel_pg_dir;
 
 extern int lapic_present;
 extern bool ioapic_initialized;
@@ -79,6 +80,7 @@ __attribute__((regparm(0))) void trap_handler(struct regs_frame *rf) {
 
 #ifdef DEBUG_TRAP
     printf(KERNEL_DEBUG, "Trap handler\ngs: %x fs: %x es: %x ds: %x code_nr: %x cs: %x eip: %x ss: %x esp: %x ", rf->gs, rf->fs, rf->es, rf->ds, rf->code_nr, rf->cs, rf->eip, rf->ss, rf->esp);
+
     if (rf->trap_nr == 14) {
         u32 cr2;
         __asm__ __volatile__(
@@ -87,6 +89,27 @@ __attribute__((regparm(0))) void trap_handler(struct regs_frame *rf) {
             : "=m"(cr2)
             :
             : "%eax");
+
+#ifdef DEBUG_USER_MODE_TRAP
+        if (rf->eip < KERNEL_VIRT_ADDR) {
+            pgd_t *pgdir, *pgd;
+            pte_t *pte;
+
+            pgdir = GET_CPU_PGDIR(CUR_CPU);
+            pgd = pgdir + ((rf->eip >> PGD_SHIFT) & 0x3ff);
+            printf(KERNEL_INFO, " code - pgd: %x, *pgd: %x -- ", pgd, *pgd);
+            pte = (pte_t*)ADDPTRS(*pgd & PAGE_MASK, KERNEL_VIRT_ADDR);
+            map_kernel_linear_with_pagetable((addr_t)pte, PAGE_SIZE, 0, MAP_LOCAL_CPU);
+            pte += ( (rf->eip >> PAGE_SHIFT) & 0x3ff);
+            printf(KERNEL_INFO, " pte: %x, *pte: %x -- ", pte, *pte);
+            pgd = pgdir + ((rf->esp >> PGD_SHIFT) & 0x3ff);
+            printf(KERNEL_INFO, " stack - pgd: %x, *pgd: %x -- ", pgd, *pgd);
+            pte = (pte_t*)ADDPTRS(*pgd & PAGE_MASK, KERNEL_VIRT_ADDR);
+            map_kernel_linear_with_pagetable((addr_t)pte, PAGE_SIZE, 0, MAP_LOCAL_CPU);
+            pte += ((rf->esp >> PAGE_SHIFT) & 0x3ff);
+            printf(KERNEL_INFO, " pte: %x, *pte: %x -- ", pte, *pte);
+        }
+#endif
         printf(KERNEL_DEBUG, " CR2 reg: %x\n", cr2);
     } else {
         printf(KERNEL_DEBUG, "\n");
