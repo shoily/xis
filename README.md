@@ -1,4 +1,4 @@
-<b>XIS</b> operating system needs only 2MB of memory to run.<br>
+<b>XIS</b> operating system.<br>
 
 It supports boot loader, kernel with protected mode, paging, E820 enumeration, interrupt and exception handling, system calls, user mode, local APIC, ACPI and multiprocessor.
 
@@ -34,8 +34,6 @@ ld -static -T kernel32.ld -m elf_i386 -nostdlib --nmagic boot32.o util.o system.
 
 objdump -x xiskernel.elf | grep _end_kernel_initial_pg_table | awk -Wposix '{cmd="printf %d 0x" $1; cmd | getline decimal; close(cmd); if (decimal > 4294963200) print "STOP: Not enough memory to map pagetables. Upgrade to 64bit kernel.";}'<br>
 objcopy -O binary xiskernel.elf xiskernel.bin<br>
-echo ".equ KERNEL_SIZE, &#96;ls -l xiskernel.bin | cut -f5 -d\ &#96;" > krnlsize.S<br>
-awk '/KERNEL_SIZE/{var=$3; cmd="objdump -x xiskernel.elf | grep INITIAL_KMAPPED_MEMORY | cut -f1 -d\\ "; cmd | getline hex;close(cmd); cmd="printf %d 0x" hex; cmd | getline decimal; if ((var-4096) > decimal) printf("STOP: Map atleast 0x%x bytes in boot32.S. Currently mapped 0x%x bytes", var, decimal);}' krnlsize.S<br>
 
 <b>Instructions for building boot loader -</b><br>
 cat krnlconst.hdr | awk '{ if(substr($1, 0, 1) != "#") {print ".equ " $1 ", " $2}; }' > krnlconst.S<br>

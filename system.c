@@ -105,7 +105,7 @@ void mask_pic_8259() {
                          "outb %%al, $0xa1;"
                          :
                          :
-                         : );
+                         : "%eax");
 }
 
 void init_pic_8259() {
@@ -188,7 +188,7 @@ void pit_wait(int cycles) {
                          "1:"
                          : "=r"(counter), "=r"(status_reg)
                          : "0"(cycles)
-                         : "%eax"
+                         : "%eax", "cc", "memory"
                          );
 
 #ifdef DEBUG

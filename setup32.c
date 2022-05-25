@@ -46,8 +46,9 @@ struct tss_entry __attribute__((aligned(4096))) tss[MAX_NUM_SMPS];
 
 int sched_tick[MAX_NUM_SMPS];
 
+extern pgd_t _master_kernel_pg_dir;
+extern pgd_t _master_kernel_pg_dir_test;
 extern int _kernel_stack_0_start;
-extern addr_t _kernel_pg_dir;
 
 extern int lapic_present;
 extern bool ioapic_initialized;
@@ -88,7 +89,21 @@ __attribute__((regparm(0))) void trap_handler(struct regs_frame *rf) {
             "mov %%eax, %0;"
             : "=m"(cr2)
             :
-            : "%eax");
+            : "%eax", "memory");
+
+        if (rf->eip >= KERNEL_VIRT_ADDR) {
+            u32 pgd_entry = (cr2 >> PGD_SHIFT) & 0x3ff;
+            pgd_t *local_pgd = GET_CPU_PGDIR(CUR_CPU) + pgd_entry;
+            pgd_t *master_pgd = &_master_kernel_pg_dir + pgd_entry;
+
+            printf(KERNEL_INFO, " PF: %x %x %x %x ", local_pgd, master_pgd, *local_pgd, *master_pgd);
+
+            if (!*local_pgd && *master_pgd) {
+                printf(KERNEL_INFO, " fixed pgd entry ");
+                *local_pgd = *master_pgd;
+                return;
+            }
+        }
 
 #ifdef DEBUG_USER_MODE_TRAP
         if (rf->eip < KERNEL_VIRT_ADDR) {
@@ -335,6 +350,7 @@ void set_idt(int vector, idt_function_type idt_function) {
 }
 
 void setup32() {
+    int cr3 = (int)&_kernel_pg_dir-KERNEL_VIRT_ADDR;
 
 	memset(sched_tick, 0, sizeof(sched_tick));
 
@@ -355,7 +371,15 @@ void setup32() {
         init_pit_frequency();
     }
 
-    STI;
-
     printf(KERNEL_INFO, "Setup GDT,IDT, LDT and TSS done\n");
+
+    memcpy(&_kernel_pg_dir, &_master_kernel_pg_dir, PAGE_SIZE);
+
+    __asm__ __volatile__(
+        "movl %0, %%eax;"
+        "mov %%eax, %%cr3;"
+        :
+        : "r"(cr3)
+        : "%eax", "memory", "cc");
+    STI;
 }

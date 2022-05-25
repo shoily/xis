@@ -48,7 +48,14 @@
                                  :            \
                                  :            \
                                  );           \
-
+/*
+#define clear_tlb(pfn) __asm__ __volatile__("movl $%0, %%eax;" \
+                                            "invlpg (%%eax);"  \
+                                            :                  \
+                                            : "m" ((pfn))      \
+                                            : "%eax"           \
+                                            );                 \
+*/
 extern int lapic_present;
 
 #define CUR_CPU (lapic_present ? (lapic_read_register(LAPIC_ID_REG) >> 24) : 0)

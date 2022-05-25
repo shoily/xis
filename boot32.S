@@ -18,36 +18,81 @@
     .include "krnlconst.S"
 
     .globl _start
+    .globl _end_kernel_init_text
 _start:
 
-    // initializing kernel page directory with zero
-    movl $_kernel_pg_dir, %edi
+    // initializing master kernel page directory with zero
+    cld
+    movl $_master_kernel_pg_dir-KERNEL_VIRT_ADDR, %edi
     movl $1024, %ecx
     movl $0, %eax
 1:
     stosl
     loop 1b
 
-    // populating page directory entries for identity mapping and at 0x80000000
+    // aligns end of pgds with PGD_SIZE (currently 4MB)
+    movl $_kernel_pg_table_0-KERNEL_VIRT_ADDR, %eax
+    addl $~PGD_MASK, %eax
+    andl $PGD_MASK, %eax
+
+    // page tables pages in bytes
+    shrl $(PGD_SHIFT-PAGE_SHIFT), %eax
+
+    // end of page tables
+    addl $_kernel_pg_table_0-KERNEL_VIRT_ADDR, %eax
+    movl %eax, %ebx
+
+    // aligns end of page tables with PGD_SIZE (currently 4MB)
+    addl $~PGD_MASK, %eax
+    andl $PGD_MASK, %eax
+
+    testl %eax, %ebx
+    jnz 1f
+
+    // we fit all mapping of kernel code, page directories
+    // and page tables using our calculated end of page tables.
+    // But we will not be able to map more page tables because we
+    // have exhausted all the entries in the last page table about to be
+    // mapped. So the solution is to add one more page table. Now, we can extend
+    // more page tables because the first entry of the new page table maps itself.
+    addl $PAGE_SIZE, %ebx
+    movl %ebx, %eax
+    addl $~PGD_MASK, %eax
+    andl $PGD_MASK, %eax
+1:
+    // eax stores end of page table aligned with PGD_SIZE to
+    // populate page directory entries.
+    // ebx stores end of page table
+    movl %ebx, _end_kernel_mapped_memory-KERNEL_VIRT_ADDR
+
+    // populating page directory entries for both identity mapping and at 0x80000000
+    movl %eax, %ecx
+    shrl $PGD_SHIFT, %ecx
     movl $_kernel_pg_table_0-KERNEL_VIRT_ADDR, %edx
     leal 0x1(%edx), %eax
-    movl %eax, _kernel_pg_dir-KERNEL_VIRT_ADDR
-    movl %eax, _kernel_pg_dir-KERNEL_VIRT_ADDR+KERNEL_PGDIR_OFFSET
+    movl $_master_kernel_pg_dir-KERNEL_VIRT_ADDR, %edi
+    movl $_master_kernel_pg_dir-KERNEL_VIRT_ADDR+KERNEL_PGDIR_OFFSET, %edx
+1:
+    movl %eax, (%edx)
+    movl %eax, (%edi)
+    addl $4, %edx
+    addl $4, %edi
+    addl $PAGE_SIZE, %eax
+    loop 1b
 
-    // populating page table entries that maps 4MB spaces starting from memory address 0
-    // both page directory and page table entry should be located in first 4 GB.
+    // populating page table entries
     cld
     movl $0x3, %eax
-    movl $1024, %ecx
+    movl %ebx, %ecx
+    shrl $PAGE_SHIFT, %ecx
     movl $_kernel_pg_table_0-KERNEL_VIRT_ADDR, %edi
-    
 1:
     stosl
     addl $0x1000, %eax
     loop 1b
 
     // turning on paging
-    movl $_kernel_pg_dir-KERNEL_VIRT_ADDR, %eax
+    movl $_master_kernel_pg_dir-KERNEL_VIRT_ADDR, %eax
     movl %eax, %cr3
     movl %cr0, %eax
     orl $0x80000000, %eax
@@ -58,9 +103,28 @@ _start:
 
 highaddress:
 
+    // invalidate TLB for identity mapping
+    movl %ebx, %ecx
+    shrl $PAGE_SHIFT, %ecx
+    movl %eax, 0
+1:
+    invlpg (%eax)
+    addl $PAGE_SIZE, %eax
+    loop 1b
+
     // invalidate identity mapping
-    movl $0, _kernel_pg_dir
-    invlpg (0)
+    movl %ebx, %ecx
+    addl $~PGD_MASK, %ecx
+    andl $PGD_MASK, %ecx
+    shrl $PGD_SHIFT, %ecx
+
+    movl %ecx, %eax
+    movl $0, %eax
+    movl $_master_kernel_pg_dir, %edi
+    cld
+1:
+    stosl
+    loop 1b
 
     // setting up kernel mode stack in high address
     movl $(_kernel_stack_0_start), %esp
@@ -68,9 +132,21 @@ highaddress:
 
     call start_kernel
 
+    movl $9, %eax
+    addl $48, %eax
+    orl $(0xF << 8), %eax
+    movl %eax, VIDEO_BUFFER+KERNEL_VIRT_ADDR
+
 loop:
     jmp loop
 
+_end_kernel_init_text:
+
+    .data
+    .global _end_kernel_mapped_memory
+    .align 8
+_end_kernel_mapped_memory:
+    .long 0
     // load smp binary code here
     .section mp_init, "ax"
     .global init_ap

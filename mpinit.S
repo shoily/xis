@@ -75,9 +75,9 @@ protectedmodeaddress:
     addl %ebx, %eax
     movl %eax, %cr3
 
-    movl %cr0, %eax
-    orl $0x80000000, %eax
-    movl %eax, %cr0
+    movl %cr0, %ebx
+    orl $0x80000000, %ebx
+    movl %ebx, %cr0
 
     ljmpl *highcodesegaddr
 
@@ -85,6 +85,15 @@ protectedmodeaddress:
     .section ".high", "ax"
 
 highaddress:
+
+    // eax contains PGD
+    // clear TLB entries for 0x7C00
+    invlpg (0x7000)
+
+    // clear identity mapping for first 4MB
+    //addl $KERNEL_VIRT_ADDR, %eax
+    leal KERNEL_VIRT_ADDR(%eax), %ebx
+    movl $0, (%ebx)
 
     // push lapic id in the stack
     pushl %ecx

@@ -29,7 +29,7 @@ void read_msr(int msr, int *eax, int *edx) {
     __asm__ __volatile__("rdmsr;"
                          : "=a" (*eax), "=d" (*edx)
                          : "c" (msr)
-                         : );
+                         : "memory");
 }
 
 int lapic_read_register(int lapic_register) {
@@ -74,7 +74,7 @@ void init_lapic() {
                          "movl %%edx, %0;"
                          : "=r" (local_lapic_present)
                          :
-                         : "%eax", "%edx"
+                         : "%eax", "%edx", "memory"
                          );
 
 	printf(KERNEL_INFO, "Local APIC present: %d ", local_lapic_present);
@@ -83,13 +83,10 @@ void init_lapic() {
         return;
     }
 
-    // memset(lapic_pg_table, 0, sizeof(lapic_pg_table));
-    // pgtable[0] = (pte_t*)lapic_pg_table;
-
     read_msr(0x1b, &eax, &edx);
     lapic_base_register = eax & 0xfffff000;
 
-    map_kernel_with_pagetable(lapic_base_register, lapic_base_register, PAGE_SIZE, PTE_WRITE, MAP_LOCAL_CPU);
+    map_kernel_with_pagetable(lapic_base_register, lapic_base_register, PAGE_SIZE, PTE_WRITE, 0);
 
     lapic_present = local_lapic_present;
 

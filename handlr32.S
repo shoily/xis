@@ -145,6 +145,7 @@
     pop %ds
 
     popa
+    addl $4, %esp
     sti
 
     iret

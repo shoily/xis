@@ -43,6 +43,7 @@ int start_kernel(void) {
     interrupts_init();
 	acpi_init();
 	ioapic_init();
+
 	smp_start();
 	initialize_usermode();
     printf(KERNEL_INFO, "Kernel started ");

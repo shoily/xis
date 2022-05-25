@@ -81,7 +81,7 @@ e820_next_entry:
 
 e820_failed:
 
-    // write 'E' in the screen to indicate e820 error
+    // write 'E' on the screen to indicate e820 error
     movb $'E', %al
     movb $0x0e, %ah
     int $0x10
@@ -93,7 +93,7 @@ e820_done:
     // store e820 count in memory
     movl %ebp, E820_MAP_COUNT
 
-    // write '8' in the screen to indicate e820 success
+    // write '8' on the screen to indicate e820 success
     movb $'8', %al
     movb $0x0e, %ah
     int $0x10
@@ -153,9 +153,6 @@ a20_line:
 
 	jc lba_read_error
 
-
-
-
     // initialize protected mode
     cli
     xor %ax, %ax
@@ -184,14 +181,14 @@ a20_line:
 
 lba_read_error:
     
-    // write 'X' in the screen to indicate read error
+    // write 'X' on the screen to indicate read error
     movb $'X', %al
     movb $0x0e, %ah
     int $0x10
     jmp loop
 
 kernel_too_big:
-    // write 'B' in the screen to indicate kernel too big
+    // write 'B' on the screen to indicate kernel too big
     movb $'B', %al
     movb $0x0e, %ah
     int $0x10

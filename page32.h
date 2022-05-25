@@ -34,8 +34,6 @@ extern addr_t _kernel_pg_dir;
 #define PTE_WRITE     2
 #define PTE_USER      4
 
-#define PAGE_MASK ~(PAGE_SIZE-1)
-#define PGD_MASK ~(PGD_SIZE-1)
 #define PGD_FLAG_MASK 0x1FFF
 
 #define MAP_USER 1
@@ -54,7 +52,7 @@ pfn_t page_getpfn(void *addr);
 void pgd_lock_init();
 void pgd_kernel_lock_all();
 void pgd_kernel_unlock_all();
-
+void pagetable_delete_entry(u32 pfn, u32 pages);
 
 #define map_kernel_linear_with_pagetable(v,l,pte_flags,map_flags) map_kernel_with_pagetable((v),(v)-KERNEL_VIRT_ADDR,(l),(pte_flags),(map_flags))
 

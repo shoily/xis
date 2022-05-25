@@ -31,6 +31,6 @@ void spinlock_unlock(spinlock *lock) {
     __asm__ __volatile__("movl $0, %0;"
                          : "=m" (lock->val)
                          :
-                         : "cc", "memory" );
+                         : "memory" );
 }
 

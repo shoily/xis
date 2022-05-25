@@ -24,8 +24,10 @@
 // CONVERT_64
 extern addr_t _kernel_section_start;
 extern addr_t _end_kernel_initial_pg_table;
+extern addr_t _master_kernel_pg_dir, _kernel_pg_dir;
 extern addr_t _kernel_pg_table_0;
 extern addr_t init_ap_size;
+extern int _end_kernel_mapped_memory;
 
 #define MEM_CACHE_FLAG_ADDING_SLOT 1
 
@@ -92,7 +94,6 @@ s32 mem_init() {
     addr64_t base_aligned, addr;
     // CONVERT_64
     addr64_t kpages_memory;
-    addr_t kpage_beyond_mapping;
     addr_t end_kernel_pgtbls;
     addr_t mp_addr;
     u64 i, j;
@@ -109,39 +110,26 @@ s32 mem_init() {
     if (total_effective_memory > MAX_SUPPORTED_MEMORY)
         total_effective_memory = MAX_SUPPORTED_MEMORY;
 
-    if (total_effective_memory < INITIAL_KMAPPED_MEMORY)
-        nr_pgtbls = 0;
-    else
-        nr_pgtbls = (ALIGN_PGD(total_effective_memory) >> PGD_SHIFT) - (INITIAL_KMAPPED_MEMORY >> PGD_SHIFT);
+    nr_pgtbls = (ALIGN_PGD(total_effective_memory) - _end_kernel_mapped_memory) >> PGD_SHIFT;
 
     nr_kpages = (total_effective_memory >> PAGE_SHIFT);
     kpages_memory = ALIGN_PAGE(nr_kpages * sizeof(struct kpage));
 
-    end_kernel_pgtbls = ADDPTRS(&_end_kernel_initial_pg_table, nr_pgtbls << PAGE_SHIFT);
+    _end_kernel_mapped_memory += KERNEL_VIRT_ADDR;
+    end_kernel_pgtbls = ADDPTRS(_end_kernel_mapped_memory, nr_pgtbls << PAGE_SHIFT);
     kpage = kpages = (struct kpage *)end_kernel_pgtbls;
 
-    if (ADDPTRS(&_end_kernel_initial_pg_table, PAGE_SIZE) >= ADDPTRS(KERNEL_VIRT_ADDR, INITIAL_KMAPPED_MEMORY)) {
-        sprintf(debug_str, "pgtable for kpages cannot be mapped due to kernel size reaches %d of initial mapping. Increase initial mapping.\n", INITIAL_KMAPPED_MEMORY);
-        print_vga(debug_str);
-        return -1;
-    } else if (ADDPTRS64(PTR64(kpages), kpages_memory) > MAX_SUPPORTED_MEMORY) {
+    if (ADDPTRS64(PTR64(kpages), kpages_memory) > MAX_SUPPORTED_MEMORY) {
         print_vga("Could not map page tables and kpages. Reached maximum limit for 32 bit OS. Upgrade to 64bit kernel\n");
-        sprintf(debug_str, "_end_kernel_initial_pg_table: %x, nr_pgtbls size: %x, kpages_memory: %x\n", PTR(&_end_kernel_initial_pg_table), PTR(nr_pgtbls << PAGE_SHIFT), PTR(kpages_memory));
+        sprintf(debug_str, "_end_kernel_mapped_memory: %x, nr_pgtbls size: %x, kpages_memory: %x\n", PTR(_end_kernel_mapped_memory), PTR(nr_pgtbls << PAGE_SHIFT), PTR(kpages_memory));
         print_vga(debug_str);
         return -1;
     }
 
     if (nr_pgtbls)
-        map_kernel_linear_with_pagetable(ADDPTRS(KERNEL_VIRT_ADDR, INITIAL_KMAPPED_MEMORY), nr_pgtbls << PAGE_SHIFT, PTE_PRESENT | PTE_WRITE, false);
+        map_kernel_linear_with_pagetable(_end_kernel_mapped_memory, nr_pgtbls << PAGE_SHIFT, PTE_PRESENT | PTE_WRITE, false);
 
-    if (ADDPTRS(end_kernel_pgtbls, kpages_memory) > ADDPTRS(KERNEL_VIRT_ADDR, INITIAL_KMAPPED_MEMORY)) {
-        if ((addr_t)kpages < (addr_t)ADDPTRS(KERNEL_VIRT_ADDR, INITIAL_KMAPPED_MEMORY))
-            kpage_beyond_mapping = ADDPTRS(KERNEL_VIRT_ADDR, INITIAL_KMAPPED_MEMORY);
-        else
-            kpage_beyond_mapping = (addr_t)kpages;
-
-        map_kernel_linear_with_pagetable(kpage_beyond_mapping, kpages_memory, PTE_PRESENT | PTE_WRITE, false);
-   }
+    map_kernel_linear_with_pagetable(PTR(kpages), kpages_memory, PTE_PRESENT | PTE_WRITE, false);
 
     end_kernel_data = ADDPTRS(kpages, kpages_memory);
     kpage_last = kpages;
@@ -213,6 +201,8 @@ s32 mem_init() {
         }
         kpage++;
     }
+
+    memset(&_kernel_pg_dir, 0, PAGE_SIZE);
 
     return 0;
 }

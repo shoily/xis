@@ -207,8 +207,8 @@ void acpi_init() {
 	}
 	
 	rsdt = (ACPI_TABLE*)ADDPTRS(rsdp->rsdt_address, KERNEL_VIRT_ADDR);
-    map_kernel_linear_with_pagetable((addr_t)rsdt, sizeof(ACPI_TABLE), PTE_PRESENT, MAP_LOCAL_CPU);
-    map_kernel_linear_with_pagetable((addr_t)rsdt, rsdt->length, PTE_PRESENT, MAP_LOCAL_CPU);
+    map_kernel_linear_with_pagetable((addr_t)rsdt, sizeof(ACPI_TABLE), PTE_PRESENT, 0);
+    map_kernel_linear_with_pagetable((addr_t)rsdt, rsdt->length, PTE_PRESENT, 0);
 	printf(KERNEL_INFO, "RSDT: %p ", (long)rsdt-KERNEL_VIRT_ADDR);
 	printf(KERNEL_INFO, "RSDT Length: %d, %d ", rsdt->length, sizeof(ACPI_TABLE));
 
