@@ -45,15 +45,15 @@ void sprintf(char *buf, char *fmt, ...);
 
 typedef enum _va_type {
 
-	VA_BYTE = 0,
-	VA_PERCENT = 1,
-	VA_CHAR = 2,
-	VA_UCHAR = 3,
-	VA_INT = 4,
-	VA_UINT = 5,
-	VA_HEX = 6,
-	VA_SHORT = 7,
-	VA_USHORT = 8
+    VA_BYTE = 0,
+    VA_PERCENT = 1,
+    VA_CHAR = 2,
+    VA_UCHAR = 3,
+    VA_INT = 4,
+    VA_UINT = 5,
+    VA_HEX = 6,
+    VA_SHORT = 7,
+    VA_USHORT = 8
 } va_type;
 
 struct list {
@@ -69,5 +69,16 @@ struct list {
 
 #define offset_of(s,m) (&((s *)(0))->m)
 #define container_of(l,s,m) ((s*)((long)l-(long)offset_of(s,m)))
+
+struct ring_buffer {
+    u8 *buffer;
+    u16 buffer_size;
+    u16 cur_ptr;
+    u16 len;
+};
+
+int ring_buffer_init(struct ring_buffer *rb, void *buffer, u16 buffer_size);
+int ring_buffer_put_elem(struct ring_buffer *rb, u8 elem);
+int ring_buffer_get_elem(struct ring_buffer *rb, u8 *elem);
 
 #endif // _UTIL_H

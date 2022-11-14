@@ -25,7 +25,7 @@
     .globl _start
 _start:
 
-	movb %dl, boot_drive
+    movb %dl, boot_drive
 
 
     // clear screen
@@ -118,7 +118,7 @@ a20_line:
     // memory buffer location of disk address packet
     movw $dap, %si
     xorw %ax, %ax
-	movw %ax, 4(%si)
+    movw %ax, 4(%si)
 
 
 
@@ -149,9 +149,9 @@ a20_line:
 
     // issue int 13h function 42h to read sector
     movb $0x42, %ah
-	int	$0x13
+    int    $0x13
 
-	jc lba_read_error
+    jc lba_read_error
 
     // initialize protected mode
     cli
@@ -174,7 +174,7 @@ a20_line:
     orl $1, %eax
     movl %eax, %cr0
 
-	cli
+    cli
 
     // jump to protected mode
     ljmpl *codesegaddr
@@ -230,10 +230,10 @@ loop:
 boot_drive:
     .byte 0
 mode:
-	.byte	0
+    .byte    0
 dap:              /* disk address packet */
-	.long	0
-	.long	0
+    .long    0
+    .long    0
     .long   0
     .long   0
 
@@ -241,25 +241,25 @@ dap:              /* disk address packet */
     .p2align 5
 gdt:
 // offset 0x0 - NULL descriptor
-	.quad 0
+    .quad 0
 
 code_seg_addr:   
 // offset 0x8 - cs should point to this descriptor
-	.word 0xFFFF
-	.word 0
-	.byte 0
-	.byte 0x9A
-	.byte 0xCF
-	.byte 0
+    .word 0xFFFF
+    .word 0
+    .byte 0
+    .byte 0x9A
+    .byte 0xCF
+    .byte 0
 
 data_seg_addr:   
 // offset 0x10 - ds, ss, es, fs, and gs should point to this descriptor
-	.word 0xFFFF
-	.word 0
-	.byte 0
-	.byte 0x92
-	.byte 0xCF
-	.byte 0
+    .word 0xFFFF
+    .word 0
+    .byte 0
+    .byte 0x92
+    .byte 0xCF
+    .byte 0
 
 end_of_gdt: 
 

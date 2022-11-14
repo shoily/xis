@@ -132,7 +132,7 @@ void _lltoa(long long value, char *str, int base, bool maxfill) {
 }
 
 void ptrtoa(void *val, char *str) {
-	int len;
+    int len;
     char *p, *tmp;
 
 #ifdef CONFIG_64
@@ -158,60 +158,60 @@ void ptrtoa(void *val, char *str) {
 
 int strncmp(const char *s1, const char *s2, size_t len) {
 
-	for(size_t i=0;i<len;i++) {
+    for(size_t i=0;i<len;i++) {
 
-		if (*s1 < *s2)
-			return -1;
-		else if (*s1 > *s2)
-			return 1;
+        if (*s1 < *s2)
+            return -1;
+        else if (*s1 > *s2)
+            return 1;
 
-		s1++; s2++;
-	}
+        s1++; s2++;
+    }
 
-	return 0;
+    return 0;
 }
 
 void sprintf(char *buf, char *fmt, ...) {
-	va_list list;
-	va_start(fmt, list);
-	char *p = fmt;
-	char *ptr;
+    va_list list;
+    va_start(fmt, list);
+    char *p = fmt;
+    char *ptr;
 
-	union {
-		char c;
-		int i;
-		unsigned int u;
-		long long ll;
+    union {
+        char c;
+        int i;
+        unsigned int u;
+        long long ll;
         long l;
-		char *s;
-		void *p;
-	} val;
-	char str[20];
+        char *s;
+        void *p;
+    } val;
+    char str[20];
 
-	while(*p) {
-		if (*p == '%') {
-			p++;
-			if (*p == 37 || *p == '\0') {
-				*buf++ = 37;
-			} else if (*p == 'c') {
+    while(*p) {
+        if (*p == '%') {
+            p++;
+            if (*p == 37 || *p == '\0') {
+                *buf++ = 37;
+            } else if (*p == 'c') {
                 val.c = va_arg(list, char);
                 *buf++ = val.c;
             } else {
                 if (*p == 'i' || *p == 'd' || *p == 'x') {
-					val.i = va_arg(list, int);
-					itoa(val.i, str, (*p == 'x') ? 16 : 10);
+                    val.i = va_arg(list, int);
+                    itoa(val.i, str, (*p == 'x') ? 16 : 10);
                     ptr = str;
-				} else if (*p == 'p') {
-					val.p = va_arg(list, void*);
-					ptrtoa(val.p, str);
+                } else if (*p == 'p') {
+                    val.p = va_arg(list, void*);
+                    ptrtoa(val.p, str);
                     ptr = str;
-				} else if (*p == 'u') {
-					val.u = va_arg(list, unsigned int);
-					_itoa(val.u, str, 10, true);
+                } else if (*p == 'u') {
+                    val.u = va_arg(list, unsigned int);
+                    _itoa(val.u, str, 10, true);
                     ptr = str;
                 } else if (*p == 'l' && *(p+1) == 'l') {
-					p++;
-					val.ll = va_arg(list, long long);
+                    p++;
+                    val.ll = va_arg(list, long long);
                     if (*(p+1) == 'x') {
                         p++;
                         _lltoa(val.ll, str, 16, true);
@@ -219,23 +219,52 @@ void sprintf(char *buf, char *fmt, ...) {
                         lltoa(val.ll, str, 10);
                     }
                     ptr = str;
-				} else if (*p == 'l') {
+                } else if (*p == 'l') {
                     val.l = va_arg(list, long);
                     ltoa(val.l, str, (*(p+1) == 'x') ? 16 : 10);
                     if (*(p+1) == 'x')
                         p++;
                     ptr = str;
-				} else if (*p == 's') {
-					ptr = val.s = va_arg(list, char*);
-				}
+                } else if (*p == 's') {
+                    ptr = val.s = va_arg(list, char*);
+                }
 
                 while(*ptr)
                     *buf++=*ptr++;
-			}
-		} else {
-			*buf++=*p;
-		}
-		p++;
-	}
-	*buf='\0';
+            }
+        } else {
+            *buf++=*p;
+        }
+        p++;
+    }
+    *buf='\0';
+}
+
+int ring_buffer_init(struct ring_buffer *rb, void *buffer, u16 buffer_size) {
+    if (!buffer_size)
+        return -1;
+    memset(buffer, 0, buffer_size);
+    rb->buffer_size = buffer_size;
+    rb->buffer = buffer;
+    rb->cur_ptr = 0;
+    rb->len = 0;
+    return 0;
+}
+
+int ring_buffer_put_elem(struct ring_buffer *rb, u8 elem) {
+    if (((rb->cur_ptr + rb->len + 1) % rb->buffer_size) == rb->cur_ptr)
+        return -1;
+    rb->buffer[rb->cur_ptr] = elem;
+    rb->len = rb->len + 1;
+    return 0;
+}
+
+int ring_buffer_get_elem(struct ring_buffer *rb, u8 *elem) {
+    if (!rb->len || !elem)
+        return -1;
+
+    *elem = rb->buffer[rb->cur_ptr];
+    rb->cur_ptr = (rb->cur_ptr + 1) % rb->buffer_size;
+    rb->len--;
+    return 0;
 }

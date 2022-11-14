@@ -110,25 +110,25 @@ loop:
     .p2align 5
 gdt:
 // offset 0x0 - NULL descriptor
-	.quad 0
+    .quad 0
 
 code_seg_addr:
 // offset 0x8 - cs should point to this descriptor
-	.word 0xFFFF
-	.word 0
-	.byte 0
-	.byte 0x9A
-	.byte 0xCF
-	.byte 0
+    .word 0xFFFF
+    .word 0
+    .byte 0
+    .byte 0x9A
+    .byte 0xCF
+    .byte 0
 
 data_seg_addr:
 // offset 0x10 - ds, ss, es, fs, and gs should point to this descriptor
-	.word 0xFFFF
-	.word 0
-	.byte 0
-	.byte 0x92
-	.byte 0xCF
-	.byte 0
+    .word 0xFFFF
+    .word 0
+    .byte 0
+    .byte 0x92
+    .byte 0xCF
+    .byte 0
 
 end_of_gdt: 
 

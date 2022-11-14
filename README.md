@@ -29,8 +29,9 @@ gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nosta
 gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c debug.c -o debug.o<br>
 gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c acpi.c -o acpi.o<br>
 gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c interrupt.c -o interrupt.o<br>
+gcc -m32 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -ffreestanding -fno-pic -Wall -Wextra -Werror -c keyboard.c -o keyboard.o<br>
 
-ld -static -T kernel32.ld -m elf_i386 -nostdlib --nmagic boot32.o util.o system.o apic.o smp.o setup32.o handlr32.o memory.o page32.o usermode.o lock.o acpi.o debug.o interrupt.o start.o -o xiskernel.elf<br>
+ld -static -T kernel32.ld -m elf_i386 -nostdlib --nmagic boot32.o util.o system.o apic.o smp.o setup32.o handlr32.o memory.o page32.o usermode.o lock.o acpi.o debug.o interrupt.o keyboard.o start.o -o xiskernel.elf<br>
 
 objdump -x xiskernel.elf | grep _end_kernel_initial_pg_table | awk -Wposix '{cmd="printf %d 0x" $1; cmd | getline decimal; close(cmd); if (decimal > 4294963200) print "STOP: Not enough memory to map pagetables. Upgrade to 64bit kernel.";}'<br>
 objcopy -O binary xiskernel.elf xiskernel.bin<br>

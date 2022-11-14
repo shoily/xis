@@ -30,22 +30,23 @@ extern spinlock spinlock_smp;
 
 int start_kernel(void) {
 
-	vga_init();
+    vga_init();
     INIT_SPIN_LOCK(&spinlock_smp);
     pgd_lock_init();
-    if(mem_init())
+    if (mem_init())
         return -1;
-	debug_init();
-    printf(KERNEL_INFO, "XIS kernel started (v1.0)\n");
+    debug_init();
+    printf(KERNEL_INFO, "XIS kernel starting (v1.0)\n");
     dump_e820();
     setup32();
-	bda_read_table();
+    bda_read_table();
     interrupts_init();
-	acpi_init();
-	ioapic_init();
-
-	smp_start();
-	initialize_usermode();
+    acpi_init();
+    devices_init();
+    ioapic_init();
+    interrupts_enable();
+    smp_start();
+    initialize_usermode();
     printf(KERNEL_INFO, "Kernel started ");
     switch_to_um();
 

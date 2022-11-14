@@ -17,6 +17,7 @@
 #include "smp.h"
 #include "debug.h"
 #include "page32.h"
+#include "keyboard.h"
 
 // GDT data
 struct gdt_entry __attribute__((aligned(8))) gdt[LAST_SEG/8];
@@ -53,6 +54,8 @@ extern int _kernel_stack_0_start;
 extern int lapic_present;
 extern bool ioapic_initialized;
 extern int lapic_base_register;
+
+extern struct ring_buffer ring_buffer_kbd;
 
 void common_trap_handler();
 void trap_handler_14();
@@ -130,7 +133,7 @@ __attribute__((regparm(0))) void trap_handler(struct regs_frame *rf) {
         printf(KERNEL_DEBUG, "\n");
     }
 #else
-	UNUSED(rf);
+    UNUSED(rf);
 #endif
 
     __asm__ __volatile__("1: hlt; jmp 1b;" : : : );
@@ -149,36 +152,36 @@ int seconds[MAX_NUM_SMPS];
 
 void sendEOI(int intno) {
 
-	if (ioapic_initialized || (intno == 0 && lapic_present)) {
+    if (ioapic_initialized || (intno == 0 && lapic_present)) {
 
-		__asm__ __volatile__("movl %0,%%eax;"
-							 "addl $0xb0,%%eax;"
-							 "movl $0,(%%eax);"
-							 :
-							 : "m"(lapic_base_register)
-							 : "%eax"
-							);
-	} else {
+        __asm__ __volatile__("movl %0,%%eax;"
+                             "addl $0xb0,%%eax;"
+                             "movl $0,(%%eax);"
+                             :
+                             : "m"(lapic_base_register)
+                             : "%eax"
+                            );
+    } else {
 
-		__asm__ __volatile__("movb $0x20,%%al;"
-							 "movb %0,%%ah;"
-							 "cmpb $8,%%ah;"
-							 "jl 1f;"
-							 "outb %%al,$0xa0;"
-							 "1:"
-							 "outb %%al,$0x20;"
-							 :
-							 : "m"(intno)
-							 : "%eax"
-							);
-	}
+        __asm__ __volatile__("movb $0x20,%%al;"
+                             "movb %0,%%ah;"
+                             "cmpb $8,%%ah;"
+                             "jl 1f;"
+                             "outb %%al,$0xa0;"
+                             "1:"
+                             "outb %%al,$0x20;"
+                             :
+                             : "m"(intno)
+                             : "%eax"
+                            );
+    }
 }
 
 __attribute__((regparm(0))) void common_interrupt_handler(struct regs_frame *rf) {
 
     if (rf->code_nr == 0) {
 
-		sched_tick[CUR_CPU]++;
+        sched_tick[CUR_CPU]++;
 
         if (lapic_calibration_mode) {
 
@@ -186,21 +189,27 @@ __attribute__((regparm(0))) void common_interrupt_handler(struct regs_frame *rf)
             
         } else {
 #ifdef DEBUG_TIMER
-			char s[20];
-			timer_counter[CUR_CPU]++;
-			if ((!lapic_present && timer_counter[CUR_CPU] >= PIT_HZ) ||
-				(lapic_present && timer_counter[CUR_CPU] >= (1000*lapic_calibration_tick))) {
-				timer_counter[CUR_CPU] = 0;
-				seconds[CUR_CPU]++;
+            char s[20];
+            timer_counter[CUR_CPU]++;
+            if ((!lapic_present && timer_counter[CUR_CPU] >= PIT_HZ) ||
+                (lapic_present && timer_counter[CUR_CPU] >= (1000*lapic_calibration_tick))) {
+                timer_counter[CUR_CPU] = 0;
+                seconds[CUR_CPU]++;
 
-				itoa(seconds[CUR_CPU], s, 10);
-				print_vga_fixed(s, 140, 5+CUR_CPU);
-			}
+                itoa(seconds[CUR_CPU], s, 10);
+                print_vga_fixed(s, 140, 5+CUR_CPU);
+            }
 #endif
-		}
+        }
+    } else if (rf->code_nr == 2) {
+        keyboard_handle_interrupt();
+    } else {
+        //char s[20];
+        //itoa(rf->code_nr, s, 10);
+        //print_vga_fixed(s, 150, rf->code_nr);
     }
 
-	sendEOI(rf->code_nr);
+    sendEOI(rf->code_nr);
 }
 
 __attribute__((regparm(0))) void common_sys_call_handler(struct regs_frame *rf) {
@@ -208,7 +217,7 @@ __attribute__((regparm(0))) void common_sys_call_handler(struct regs_frame *rf) 
 #ifdef DEBUG_SYSCALL
     printf(KERNEL_DEBUG, "System call: %x\n", rf->code_nr | CUR_CPU, 16);
 #else
-	UNUSED(rf);
+    UNUSED(rf);
 #endif
 }
 
@@ -226,7 +235,7 @@ void initializeLDT32() {
 
 void loadLDT32() {
 
-	__asm__ __volatile__("lldt %w0;"
+    __asm__ __volatile__("lldt %w0;"
                          :
                          : "q" (LDT_SELECTOR)
                          :
@@ -283,7 +292,7 @@ void initializeTSS32(int smp_id) {
 
 void loadTSS32(int smp_id) {
 
-	__asm__ __volatile__("ltr %w0;"
+    __asm__ __volatile__("ltr %w0;"
                          :
                          : "q" ((FIRST_TASK_SEG+(smp_id*8)) | 3)
                          :
@@ -335,8 +344,8 @@ void initializeIDT32() {
 
 void loadIDT32() {
 
-	// load IDT
-	__asm__ __volatile__("movl $%0, %%eax;"
+    // load IDT
+    __asm__ __volatile__("movl $%0, %%eax;"
                          "lidt (%%eax);"
                          :
                          : "m" (idt_desc)
@@ -352,24 +361,18 @@ void set_idt(int vector, idt_function_type idt_function) {
 void setup32() {
     int cr3 = (int)&_kernel_pg_dir-KERNEL_VIRT_ADDR;
 
-	memset(sched_tick, 0, sizeof(sched_tick));
+    memset(sched_tick, 0, sizeof(sched_tick));
 
     initializeGDT32();
-	loadGDT32();
+    loadGDT32();
     initializeLDT32();
-	loadLDT32();
+    loadLDT32();
     initializeIDT32();
-	loadIDT32();
+    loadIDT32();
     initializeTSS32(0);
-	loadTSS32(0);
+    loadTSS32(0);
 
     mask_pic_8259();
-    init_lapic();
-
-    if (!lapic_present) {
-        init_pic_8259();
-        init_pit_frequency();
-    }
 
     printf(KERNEL_INFO, "Setup GDT,IDT, LDT and TSS done\n");
 
@@ -381,5 +384,4 @@ void setup32() {
         :
         : "r"(cr3)
         : "%eax", "memory", "cc");
-    STI;
 }

@@ -19,6 +19,7 @@
 #include "util.h"
 #include "lock.h"
 #include "debug.h"
+#include "keyboard.h"
 
 #define PIT_FREQUENCY 1000
 
@@ -26,10 +27,22 @@ short *vga_buf_ptr;
 spinlock spinlock_vga;
 int ebda;
 
+#define IOPORT_PS2_DATA    0x60
+#define IOPORT_PS2_STATUS  0x64
+#define IOPORT_PS2_COMMAND 0x64
+
 void vga_init() {
 
-	INIT_SPIN_LOCK(&spinlock_vga);
-	vga_buf_ptr = (short*)VIDEO_VIRT_BUFFER;
+    INIT_SPIN_LOCK(&spinlock_vga);
+    vga_buf_ptr = (short*)VIDEO_VIRT_BUFFER;
+}
+
+void devices_init() {
+    keyboard_init();
+}
+
+void device_enable_interrupts() {
+    keyboard_enable_interrupt();
 }
 
 //
@@ -37,26 +50,26 @@ void vga_init() {
 //
 void print_vga(char *c) {
 
-	spinlock_lock(&spinlock_vga);
+    spinlock_lock(&spinlock_vga);
 
     while(*c) {
 
-		if (*c == '\n') {
+        if (*c == '\n') {
 
-			vga_buf_ptr += (160-(((int)vga_buf_ptr-VIDEO_VIRT_BUFFER)%160))/sizeof(short);
-			c++;
-			continue;
-		}
+            vga_buf_ptr += (160-(((int)vga_buf_ptr-VIDEO_VIRT_BUFFER)%160))/sizeof(short);
+            c++;
+            continue;
+        }
 
-		if (vga_buf_ptr >= (short*)(VIDEO_VIRT_BUFFER+(160*25)))
-			break;
+        if (vga_buf_ptr >= (short*)(VIDEO_VIRT_BUFFER+(160*25)))
+            break;
 
-		*vga_buf_ptr = ((0xF << 8) | *c);
+        *vga_buf_ptr = ((0xF << 8) | *c);
         c++;
         vga_buf_ptr++;
     }
 
-	spinlock_unlock(&spinlock_vga);
+    spinlock_unlock(&spinlock_vga);
 }
 
 void print_vga_fixed(char *c, int col, int row) {
@@ -209,9 +222,26 @@ void pit_wait_ms(int ms) {
 
 void bda_read_table() {
 
-	short *p = (short*)(0x40e + KERNEL_VIRT_ADDR);
+    short *p = (short*)(0x40e + KERNEL_VIRT_ADDR);
 
-	ebda = ((int)(unsigned short)*p) << 4;
+    ebda = ((int)(unsigned short)*p) << 4;
 
-	printf(KERNEL_INFO, "EBDA: %x ", ebda);
+    printf(KERNEL_INFO, "EBDA: %x ", ebda);
 }
+
+void read_msr(int msr, int *eax, int *edx) {
+
+    __asm__ __volatile__("rdmsr;"
+                         : "=a" (*eax), "=d" (*edx)
+                         : "c" (msr)
+                         : "memory");
+}
+
+void write_msr(int msr, int eax, int edx) {
+
+    __asm__ __volatile__("wrmsr;"
+                         :
+                         : "c" (msr), "a"(eax), "d"(edx)
+                         :);
+}
+

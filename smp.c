@@ -42,25 +42,25 @@ retry:
         goto retry;
     }
 
-	smp_nums++;
+    smp_nums++;
     smp_bits |= 1 << smp_id;
 
     spinlock_unlock(&spinlock_smp);
 
-	loadGDT32();
-	loadLDT32();
-	initializeTSS32(smp_id);
-	loadTSS32(smp_id);
-	loadIDT32();
+    loadGDT32();
+    loadLDT32();
+    initializeTSS32(smp_id);
+    loadTSS32(smp_id);
+    loadIDT32();
 
-	lapic_write_register(LAPIC_SPURIOUS_REG, lapic_read_register(LAPIC_SPURIOUS_REG)| 0x1ff);
-	lapic_write_register(LAPIC_LVT_TIMER_REG, LAPIC_IDT_VECTOR | 0x20000); // Periodic timer on vector 32.
-	lapic_write_register(LAPIC_DIVIDE_CONFIGURATION_REG, LAPIC_DIVIDE_CONFIG_VALUE); // Divide by 128
-	lapic_write_register(LAPIC_INITIAL_COUNTER_REG, LAPIC_COUNTER_VALUE);
+    lapic_write_register(LAPIC_SPURIOUS_REG, lapic_read_register(LAPIC_SPURIOUS_REG)| 0x1ff);
+    lapic_write_register(LAPIC_LVT_TIMER_REG, LAPIC_IDT_VECTOR | 0x20000); // Periodic timer on vector 32.
+    lapic_write_register(LAPIC_DIVIDE_CONFIGURATION_REG, LAPIC_DIVIDE_CONFIG_VALUE); // Divide by 128
+    lapic_write_register(LAPIC_INITIAL_COUNTER_REG, LAPIC_COUNTER_VALUE);
 
-	STI;
-	initialize_usermode();
-	switch_to_um();
+    STI;
+    initialize_usermode();
+    switch_to_um();
 }
 
 void copy_smp_init_to_low_mem() {
@@ -75,25 +75,25 @@ void copy_smp_init_to_low_mem() {
 
 void initialize_kernel_pg_tables() {
 
-	pgd_t *pgd;
+    pgd_t *pgd;
 
-	for(int i = 1; i < MAX_NUM_SMPS; i++) {
+    for(int i = 1; i < MAX_NUM_SMPS; i++) {
 
-		pgd = (pgd_t*)((int)&_kernel_pg_dir + (PAGE_SIZE * i));
-		memcpy(pgd, &_master_kernel_pg_dir, PAGE_SIZE);
-		// identity mapping for first 4 MB
-		*pgd = *(pgd+KERNEL_PGDIR_ENTRY);
-	}
+        pgd = (pgd_t*)((int)&_kernel_pg_dir + (PAGE_SIZE * i));
+        memcpy(pgd, &_master_kernel_pg_dir, PAGE_SIZE);
+        // identity mapping for first 4 MB
+        *pgd = *(pgd+KERNEL_PGDIR_ENTRY);
+    }
 }
 
 void smp_start() {
 
-	if (!lapic_present)
-		return;
+    if (!lapic_present)
+        return;
 
     copy_smp_init_to_low_mem();
 
-	initialize_kernel_pg_tables();
+    initialize_kernel_pg_tables();
 
     // initialize AP processor count with 0
     // it will be increased by AP startup code

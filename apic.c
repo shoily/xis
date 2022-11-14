@@ -22,16 +22,6 @@ int lapic_id;
 
 extern addr_t _kernel_pg_dir;
 
-// char __attribute__((aligned(4096))) lapic_pg_table[4096];
-
-void read_msr(int msr, int *eax, int *edx) {
-
-    __asm__ __volatile__("rdmsr;"
-                         : "=a" (*eax), "=d" (*edx)
-                         : "c" (msr)
-                         : "memory");
-}
-
 int lapic_read_register(int lapic_register) {
     
     return *((int*)(lapic_base_register+lapic_register));
@@ -48,18 +38,18 @@ extern bool lapic_timer_enabled;
 
 void calibrate_lapic_timer() {
 
-	lapic_write_register(LAPIC_LVT_TIMER_REG, LAPIC_IDT_VECTOR | 0x20000); // Periodic timer on vector 32.
+    lapic_write_register(LAPIC_LVT_TIMER_REG, LAPIC_IDT_VECTOR | 0x20000); // Periodic timer on vector 32.
     lapic_write_register(LAPIC_DIVIDE_CONFIGURATION_REG, LAPIC_DIVIDE_CONFIG_VALUE); // Divide by 128
 
     lapic_calibration_mode = true;
     lapic_write_register(LAPIC_INITIAL_COUNTER_REG, LAPIC_COUNTER_VALUE);
     pit_wait_ms(1);
-	CLI;
+    CLI;
     lapic_write_register(LAPIC_INITIAL_COUNTER_REG, 0);
     lapic_calibration_mode = false;
-	lapic_timer_enabled = true;
+    lapic_timer_enabled = true;
     STI;
-	lapic_write_register(LAPIC_INITIAL_COUNTER_REG, LAPIC_COUNTER_VALUE);
+    lapic_write_register(LAPIC_INITIAL_COUNTER_REG, LAPIC_COUNTER_VALUE);
 }
 
 void init_lapic() {
@@ -77,7 +67,7 @@ void init_lapic() {
                          : "%eax", "%edx", "memory"
                          );
 
-	printf(KERNEL_INFO, "Local APIC present: %d ", local_lapic_present);
+    printf(KERNEL_INFO, "Local APIC present: %d ", local_lapic_present);
 
     if (!local_lapic_present) {
         return;
@@ -90,7 +80,7 @@ void init_lapic() {
 
     lapic_present = local_lapic_present;
 
-	printf(KERNEL_INFO, "Local APIC address: %p ", eax);
+    printf(KERNEL_INFO, "Local APIC address: %p ", eax);
 
     lapic_id = lapic_read_register(LAPIC_ID_REG) >> 24;
 
