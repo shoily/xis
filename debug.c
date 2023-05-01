@@ -21,11 +21,10 @@ int cur_offset;
 char *kernel_debug_buffer;
 int debug_level_for_vga;
 
-#define DEBUG_BUFFER_SIZE PAGE_SIZE
+#define DEBUG_BUFFER_SIZE (PAGE_SIZE << 0)
 
 void debug_init() {
-
-    kernel_debug_buffer = page_alloc_kmap_linear(DEBUG_BUFFER_SIZE >> PAGE_SHIFT);
+    kernel_debug_buffer = page_alloc_kmap_linear(NPAGES_TO_ORDER(DEBUG_BUFFER_SIZE >> PAGE_SHIFT));
     cur_debug_mem = kernel_debug_buffer;
     cur_offset = 0;
     debug_level_for_vga = KERNEL_DEBUG;

@@ -18,7 +18,8 @@ SECTIONS
     _kernel_stack_0 = .;
     _kernel_stack_0_start = _kernel_stack_0 + 0x2000;
     _kernel_stack_end = _kernel_stack_0_start + (0x2000 * 32);
-    . = ALIGN(0x400000);
+    . = _kernel_stack_end;
+    . = ALIGN(0x1000);
     _master_kernel_pg_dir = .;
     _kernel_pg_dir = _master_kernel_pg_dir + 0x1000;
     _kernel_pg_dir_end = _kernel_pg_dir + (0x1000 * 32);

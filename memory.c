@@ -20,6 +20,7 @@
 #include "util.h"
 #include "page32.h"
 #include "smp.h"
+#include "debug.h"
 
 // CONVERT_64
 extern addr_t _kernel_section_start;
@@ -71,11 +72,10 @@ enum KPAGE_ALLOC_MODE {
 #define CACHE_MIN_CHUNK_SIZE (int)sizeof(long)
 #define CACHE_MAX_NUM 10
 
-spinlock spinlock_page_alloc;
 struct mem_cache cache[CACHE_MAX_NUM] = {0};
 
 struct kpage *kpages;
-struct kpage *free_page;
+struct list free_pages[MAX_ALLOC_ORDER+1];
 struct kpage *kpage_last;
 // CONVERT_64
 u64 nr_kpages;
@@ -84,7 +84,11 @@ u64 total_memory;
 u64 total_effective_memory;
 addr_t end_kernel_data;
 
+spinlock alloc_order_lock[MAX_ALLOC_ORDER+1];
+
 #define kpage_lookup(addr) (kpages+page_getpfn((addr)))
+
+void page_add_to_slot(struct kpage *kpage);
 
 s32 mem_init() {
 
@@ -100,10 +104,6 @@ s32 mem_init() {
     u32 nr_pgtbls;
     char debug_str[80];
 
-    INIT_SPIN_LOCK(&spinlock_page_alloc);
-
-    // CONVERT_64
-    addr = e820->base;
     // CONVERT_64
     total_effective_memory = total_memory = (e820+e820_count-1)->base + (e820+e820_count-1)->length;
 
@@ -112,7 +112,7 @@ s32 mem_init() {
 
     nr_pgtbls = (ALIGN_PGD(total_effective_memory) - _end_kernel_mapped_memory) >> PGD_SHIFT;
 
-    nr_kpages = (total_effective_memory >> PAGE_SHIFT);
+    nr_kpages = ALIGN_PAGE(total_effective_memory) >> PAGE_SHIFT;
     kpages_memory = ALIGN_PAGE(nr_kpages * sizeof(struct kpage));
 
     _end_kernel_mapped_memory += KERNEL_VIRT_ADDR;
@@ -132,49 +132,53 @@ s32 mem_init() {
     map_kernel_linear_with_pagetable(PTR(kpages), kpages_memory, PTE_PRESENT | PTE_WRITE, false);
 
     end_kernel_data = ADDPTRS(kpages, kpages_memory);
-    kpage_last = kpages;
 
-    for(i=0;i<e820_count && PTR(((kpage-kpages)) < nr_kpages);i++,e820++) {
+    for (i=0; i <= MAX_ALLOC_ORDER; i++) {
+        list_init(&free_pages[i]);
+        INIT_SPIN_LOCK(&alloc_order_lock[i]);
+    }
+
+    memset(kpages, 0, nr_kpages * sizeof(struct kpage));
+
+    // CONVERT_64
+    addr = e820->base;
+    for(i=0;i<e820_count && ((addr >> PAGE_SHIFT) < nr_kpages);i++,e820++) {
         // CONVERT_64
-        base_aligned = e820->base & PAGE_MASK;
-        for (j = 0; j < (((e820->length + PAGE_SIZE - 1) & PAGE_MASK) >> PAGE_SHIFT); j++) {
+        addr = e820->base;
+        // CONVERT_64
+        base_aligned = addr & PAGE_MASK;
+        for (j = 0; j < (ALIGN_PAGE(e820->length) >> PAGE_SHIFT); j++) {
             if (addr == base_aligned) {
-                memset(kpage, 0, sizeof(struct kpage));
-                INIT_SPIN_LOCK(&kpage->lock);
-                kpage->npages = 0;
-                kpage->flags = (e820->type == 1) ? KPAGE_FLAGS_FREE : KPAGE_FLAGS_RESERVED;
+                kpage = &kpages[addr >> PAGE_SHIFT];
+                kpage->flags = (e820->type == 1 &&
+                                ~(kpage->flags & (KPAGE_FLAGS_RESERVED | KPAGE_FLAGS_ALLOCATED | KPAGE_FLAGS_NOT_FREEABLE))) ?
+                                KPAGE_FLAGS_FREE : KPAGE_FLAGS_RESERVED;
             } else {
-                addr = base_aligned;
-                kpage--;
+                addr &= PAGE_MASK;
+                kpage = &kpages[addr >> PAGE_SHIFT];
                 if (e820->type != 1) {
                     kpage->flags &= ~KPAGE_FLAGS_FREE;
                     kpage->flags |= KPAGE_FLAGS_RESERVED;
                 }
             }
-            if (kpage->flags == KPAGE_FLAGS_FREE) {
-                if (addr >= VIRT_TO_PHYS_ADDR_LINEAR(&_kernel_section_start) && addr <= VIRT_TO_PHYS_ADDR_LINEAR(end_kernel_data)) {
-                    kpage->flags &= ~KPAGE_FLAGS_FREE;
-                    kpage->flags |= (KPAGE_FLAGS_ALLOCATED | KPAGE_FLAGS_NOT_FREEABLE);
-                }
+            if (kpage->flags == KPAGE_FLAGS_FREE &&
+                addr >= VIRT_TO_PHYS_ADDR_LINEAR(&_kernel_section_start) &&
+                addr <= VIRT_TO_PHYS_ADDR_LINEAR(end_kernel_data)) {
+                kpage->flags &= ~KPAGE_FLAGS_FREE;
+                kpage->flags |= (KPAGE_FLAGS_ALLOCATED | KPAGE_FLAGS_NOT_FREEABLE);
             }
-            if (free_page == NULL && kpage->flags == KPAGE_FLAGS_FREE)
-                free_page = kpage;
-            kpage++;
-
-            base_aligned = addr = ADDPTRS(addr, PAGE_SIZE);
+            base_aligned = addr = ADDPTRS64(addr, PAGE_SIZE);
         }
 
         // Gap between two e820 entries. We don't know their state. Mark the pages as reserved.
         // CONVERT_64
-        if ((i!=(e820_count-1)) && ((((e820+1)->base+PAGE_SIZE-1) & PAGE_MASK) != addr)) {
+        if ((i!=(e820_count-1)) && (((e820+1)->base & PAGE_MASK) != addr)) {
             // CONVERT_64
             u64 last_page_in_range = (e820+1)->base & PAGE_MASK;
             while(addr <= last_page_in_range) {
-                memset(kpage, 0, sizeof(struct kpage));
-                INIT_SPIN_LOCK(&kpage->lock);
+                kpage = &kpages[addr >> PAGE_SHIFT];
                 kpage->flags = KPAGE_FLAGS_RESERVED;
-                kpage++;
-                addr = ADDPTRS(addr, PAGE_SIZE);
+                addr = ADDPTRS64(addr, PAGE_SIZE);
             }
         }
     }
@@ -190,12 +194,21 @@ s32 mem_init() {
         map_kernel_linear_with_pagetable(mp_addr, PAGE_SIZE, PTE_PRESENT | PTE_WRITE, false);
     }
 
-    kpage_last = kpage-1;
+    // EBDA page
+    kpages[0].flags &= ~KPAGE_FLAGS_FREE;
+    kpages[0].flags |= (KPAGE_FLAGS_ALLOCATED | KPAGE_FLAGS_NOT_FREEABLE);
+
+    kpage_last = &kpages[addr >> PAGE_SHIFT] - 1;
     kpage = kpages;
     pte_t *pte;
-    while (kpage != kpage_last) {
+    while (kpage <= kpage_last) {
+        INIT_SPIN_LOCK(&kpage->lock);
+        kpage->order = 0;
         // clear pte for the page to make it inaccessible.
         if (kpage->flags == KPAGE_FLAGS_FREE) {
+            kpage->flags &= ~KPAGE_FLAGS_FREE;
+            page_add_to_slot(kpage);
+
             pte = ((pte_t*)&_kernel_pg_table_0) + (kpage-kpages);
             *pte = 0;
         }
@@ -207,70 +220,121 @@ s32 mem_init() {
     return 0;
 }
 
-struct kpage *page_alloc(u32 npages) {
-    u32 i;
-    u32 tmp;
-    struct kpage *ptr, *head;
+void page_add_to_slot(struct kpage *kpage) {
+    // CONVERT_64
+    u32 pfn, other_pfn;
+    u8 order;
+    struct kpage *first_kpage, *second_kpage;
+    struct kpage *latest_kpage = NULL;
+    bool done = false;
+    struct kpage dummy_page;
 
-    if (!npages)
-        return NULL;
+    if (kpage->flags & KPAGE_FLAGS_FREE_BUDDY)
+        return;
 
-    spinlock_lock(&spinlock_page_alloc);
-    ptr = free_page;
-
-retry:
-    head = ptr;
-    tmp = npages;
-
-    while (tmp) {
-        if (ptr > kpage_last) {
-            ptr = NULL;
-            goto out;
-        }
-
-        if (ptr->flags != KPAGE_FLAGS_FREE)
-            break;
-
-        if (free_page->flags != KPAGE_FLAGS_FREE)
-            free_page = ptr;
-
-        ptr++;
-        tmp--;
-    }
-
-    if (tmp) {
-        while(ptr && ptr->flags != KPAGE_FLAGS_FREE) {
-            ptr++;
-            if (ptr > kpage_last) {
-                ptr = NULL;
-                goto out;
+    kpage->flags &= ~KPAGE_FLAGS_ALLOCATED;
+    order = kpage->order;
+    while (order <= MAX_ALLOC_ORDER && !done) {
+        pfn = kpage-kpages;
+        other_pfn = pfn ^ (1 << order);
+        if (pfn < other_pfn) {
+            if (kpages+other_pfn > kpage_last) {
+                if (latest_kpage) {
+                    order--;
+                    kpage = latest_kpage;
+                }
+                first_kpage = kpage;
+                second_kpage = &dummy_page;
+                INIT_SPIN_LOCK(&dummy_page.lock);
+            } else {
+                first_kpage = kpage;
+                second_kpage = &kpages[other_pfn];
             }
+        } else {
+            first_kpage = &kpages[other_pfn];
+            second_kpage = kpage;
         }
 
-        goto retry;
+        spinlock_lock(&alloc_order_lock[order]);
+        spinlock_lock(&first_kpage->lock);
+        spinlock_lock(&second_kpage->lock);
+
+        if (!done &&
+            order < MAX_ALLOC_ORDER &&
+            kpages+other_pfn <= kpage_last &&
+            kpages[other_pfn].flags & KPAGE_FLAGS_FREE_BUDDY &&
+            kpages[other_pfn].order == order) {
+            if (pfn < other_pfn) {
+                kpages[other_pfn].flags &= ~KPAGE_FLAGS_FREE_BUDDY;
+                kpages[other_pfn].flags |= KPAGE_FLAGS_FREE_SUB;
+            } else {
+                kpages[pfn].flags &= ~KPAGE_FLAGS_FREE_BUDDY;
+                kpages[pfn].flags |= KPAGE_FLAGS_FREE_SUB;
+            }
+            list_remove_entry(&first_kpage->free_page);
+            list_remove_entry(&second_kpage->free_page);
+        } else {
+            list_remove_entry(&kpage->free_page);
+            kpage->order = order;
+            kpage->flags |= KPAGE_FLAGS_FREE_BUDDY;
+            list_insert_tail(&free_pages[order], &kpage->free_page);
+            done = true;
+        }
+
+        spinlock_unlock(&second_kpage->lock);
+        spinlock_unlock(&first_kpage->lock);
+        spinlock_unlock(&alloc_order_lock[order]);
+
+        order++;
+        latest_kpage = kpage;
+        kpage = first_kpage;
     }
+}
 
-    ptr = head;
-    for (i = 0; i < npages; i++, ptr++) {
-        ptr->flags &= ~KPAGE_FLAGS_FREE;
-        ptr->flags |= KPAGE_FLAGS_ALLOCATED;
-        ptr->refcount++;
+struct kpage *page_alloc(u32 order) {
+    struct kpage *kpage = NULL;
+    bool done = false;
+    struct list *l;
+    u32 alloc_order = order;
+
+    while(alloc_order <= MAX_ALLOC_ORDER && !done) {
+        spinlock_lock(&alloc_order_lock[alloc_order]);
+
+        if (!list_empty(&free_pages[alloc_order])) {
+            l = list_prev_entry(&free_pages[alloc_order]);
+            list_remove_entry(l);
+            kpage = container_of(l, struct kpage, free_page);
+            kpage->flags &= ~KPAGE_FLAGS_FREE_BUDDY;
+            kpage->flags |= KPAGE_FLAGS_ALLOCATED;
+            kpage->refcount++;
+            done = true;
+        }
+        spinlock_unlock(&alloc_order_lock[alloc_order]);
+        if (done && alloc_order != order) {
+            u32 pfn, buddy_pfn;
+            struct kpage *buddy_page;
+
+            pfn = kpage-kpages;
+            buddy_pfn = pfn ^ (alloc_order >> 1);
+            buddy_page = &kpages[buddy_pfn];
+            kpage->order = buddy_page->order = alloc_order >> 1;
+            buddy_page->flags &= ~KPAGE_FLAGS_FREE_BUDDY;
+            page_add_to_slot(buddy_page);
+        }
+        alloc_order++;
     }
-    head->npages = npages;
+    if (alloc_order > MAX_ALLOC_ORDER && !done)
+        print_vga("alloc failed\n");
 
-    if (free_page->flags != KPAGE_FLAGS_FREE) {
-        free_page = ptr;
-        if (free_page > kpage_last)
-            free_page = kpages;
-    }
+    return kpage;
+}
 
-out:
-    spinlock_unlock(&spinlock_page_alloc);
+void page_free_linear(void *addr) {
+    page_add_to_slot(&kpages[((addr_t)addr) >> PAGE_SHIFT]);
+}
 
-    if (!ptr)
-        return NULL;
-
-    return head;
+void page_free_user(void *addr) {
+    (void*)addr++; // unused
 }
 
 struct bitmap *cache_bitmap = NULL;
@@ -331,7 +395,7 @@ retry:
     cache->flags |= MEM_CACHE_FLAG_ADDING_SLOT;
     spinlock_unlock(&cache->lock);
 
-    page = page_alloc_kmap_linear(1);
+    page = page_alloc_kmap_linear(0);
     if (!page)
         return ERR_NOMEM;
 
@@ -395,7 +459,7 @@ void *mem_cache_allocate(int size) {
          ((size + PAGE_SIZE - 1) >> PAGE_SHIFT) > (1 << PAGE_SHIFT);
           order++);
 
-        page = page_alloc_kmap_linear(1 << order);
+        page = page_alloc_kmap_linear(order);
         if (!page)
             return NULL;
 
@@ -441,7 +505,7 @@ retry:
         list_remove_entry(entry);
         desc = container_of(entry, struct cache_desc, free_slot_or_area);
         spinlock_unlock(&cache->lock);
-        page = page_alloc_kmap_linear(1);
+        page = page_alloc_kmap_linear(0);
         if (!page) {
             list_insert_tail(&cache->free_slot_head, entry);
             return NULL;
@@ -496,18 +560,16 @@ int cache_init() {
     return 0;
 }
 
-void *page_alloc_kmap_linear(u32 npages) {
+void *page_alloc_kmap_linear(u32 order) {
     addr_t addr;
-    struct kpage *page = page_alloc(npages);
+    u32 size = ORDER_TO_PAGE_SIZE(order);
+    struct kpage *page = page_alloc(order);
     if (!page)
         return NULL;
 
     addr = ADDPTRS((page-kpages) << PAGE_SHIFT, KERNEL_VIRT_ADDR);
-    map_kernel_linear_with_pagetable(addr, npages << PAGE_SHIFT, PTE_PRESENT | PTE_WRITE, false);
-    memset(addr, 0, PAGE_SIZE * npages);
+    map_kernel_linear_with_pagetable(addr, size, PTE_PRESENT | PTE_WRITE, false);
+    memset(addr, 0, size);
     return (void*)addr;
 }
 
-void page_free(void *addr) {
-    (void*)addr++;
-}

@@ -205,7 +205,7 @@ int alloc_user_page(addr_t virt_addr, u32 length, u32 pte_flags) {
     if (virt_addr >= (addr_t)KERNEL_VIRT_ADDR)
         return ERR_INVALID;
 
-    page_buf = page_alloc(ALIGN_PAGE(length) >> PAGE_SHIFT);
+    page_buf = page_alloc(NPAGES_TO_ORDER(length >> PAGE_SHIFT));
     if (!page_buf)
         return ERR_NOMEM;
 
@@ -225,14 +225,14 @@ retry_pgtbl_read:
     if (prev_nr_pgtbls != nr_pgtbls) {
         UNLOCK_PGD(CUR_CPU, addr, MAP_USER | MAP_LOCAL_CPU);
         if (page_pgtbl) {
-            page_free(page_pgtbl);
+            page_free_linear(page_pgtbl);
             page_pgtbl = NULL;
         }
         if (nr_pgtbls) {
-            page_pgtbl = page_alloc(nr_pgtbls);
+            page_pgtbl = page_alloc(NPAGES_TO_ORDER(nr_pgtbls));
             if (!page_pgtbl) {
                 UNLOCK_PGD(CUR_CPU, addr, MAP_USER | MAP_LOCAL_CPU);
-                page_free(page_buf);
+                page_free_linear(page_buf);
                 return ERR_NOMEM;
             }
         }

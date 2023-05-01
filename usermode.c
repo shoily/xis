@@ -85,13 +85,13 @@ void initialize_usermode() {
     int err;
 
     if ((err = alloc_user_page(USER_MODE_VIRT_STACK, USER_MODE_STACK_SIZE, PTE_WRITE)) != 0) {
-        printf(KERNEL_ERR, "alloc_user_page failed for stack: %d\n", err);
+        printf(KERNEL_ERR, "alloc_user_page failed for stack: %d %d", err, CUR_CPU);
         return;
     }
 
     if ((err = alloc_user_page(USER_MODE_VIRT_TEXT, ALIGN_PAGE(init_um_size), 0)) != 0) {
-        printf(KERNEL_ERR, "alloc_user_page failed for text section: %d\n", err);
-        page_free((void *)USER_MODE_VIRT_STACK);
+        printf(KERNEL_ERR, "alloc_user_page failed for text section: %d ", err);
+        page_free_user((void *)USER_MODE_VIRT_STACK);
         return;
     }
 

@@ -62,10 +62,12 @@ struct list {
 };
 
 #define list_init(l)  ((l)->prev = (l)->next = l)
-#define list_insert_tail(h,l) {(l)->next = h; (l)->prev = (h)->prev; (h)->prev->next = l; (h)->prev = l;}
-#define list_next_entry(l) (((l)->next == l) ? NULL : (l)->next)
+#define list_insert_tail(h,l) {(l)->next = h; (l)->prev = (h)->prev; (h)->prev->next = (l); (h)->prev = (l);}
+#define list_next_entry(l) (list_empty(l) ? NULL : (l)->next)
+#define list_prev_entry(l) (list_empty(l) ? NULL : (l)->prev)
 #define list_empty(l) ((l)->next == (l)->prev)
 #define list_remove_entry(l) {if (!list_empty(l)) { (l)->next->prev = (l)->prev; (l)->prev->next = (l)->next; }}
+#define list_for_each_entry(l,e) for(e=(l)->next;e!=(l);e=e->next)
 
 #define offset_of(s,m) (&((s *)(0))->m)
 #define container_of(l,s,m) ((s*)((long)l-(long)offset_of(s,m)))
