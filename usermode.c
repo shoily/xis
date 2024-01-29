@@ -83,6 +83,9 @@ void load_usermode_text() {
 
 void initialize_usermode() {
     int err;
+    u32 pgd = (u32)&_kernel_pg_dir + (CUR_CPU*PAGE_SIZE);
+
+    memset((void*)pgd, 0, KERNEL_PGDIR_OFFSET);
 
     if ((err = alloc_user_page(USER_MODE_VIRT_STACK, USER_MODE_STACK_SIZE, PTE_WRITE)) != 0) {
         printf(KERNEL_ERR, "alloc_user_page failed for stack: %d %d", err, CUR_CPU);

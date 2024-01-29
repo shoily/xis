@@ -83,7 +83,7 @@ void irq_handler_15();
 __attribute__((regparm(0))) void trap_handler(struct regs_frame *rf) {
 
 #ifdef DEBUG_TRAP
-    printf(KERNEL_DEBUG, "Trap handler\ngs: %x fs: %x es: %x ds: %x code_nr: %x cs: %x eip: %x ss: %x esp: %x ", rf->gs, rf->fs, rf->es, rf->ds, rf->code_nr, rf->cs, rf->eip, rf->ss, rf->esp);
+    printf(KERNEL_DEBUG, "Trap handler\ngs: %x fs: %x es: %x ds: %x code_nr: %x cs: %x eip: %x ss: %x esp: %x eflags: %x ", rf->gs, rf->fs, rf->es, rf->ds, rf->code_nr, rf->cs, rf->eip, rf->ss, rf->esp, rf->eflags);
 
     if (rf->trap_nr == 14) {
         u32 cr2;
@@ -197,7 +197,7 @@ __attribute__((regparm(0))) void common_interrupt_handler(struct regs_frame *rf)
                 seconds[CUR_CPU]++;
 
                 itoa(seconds[CUR_CPU], s, 10);
-                print_vga_fixed(s, 140, 5+CUR_CPU);
+                print_vga_fixed(s, 140, CUR_CPU);
             }
 #endif
         }
@@ -359,24 +359,28 @@ void set_idt(int vector, idt_function_type idt_function) {
 }
 
 void setup32() {
-    int cr3 = (int)&_kernel_pg_dir-KERNEL_VIRT_ADDR;
+    u32 pgd = (u32)&_kernel_pg_dir + (CUR_CPU*PAGE_SIZE);
+    int cr3 = (u32)pgd-KERNEL_VIRT_ADDR;
 
-    memset(sched_tick, 0, sizeof(sched_tick));
+    memcpy(pgd, &_master_kernel_pg_dir, PAGE_SIZE);
+    sched_tick[CUR_CPU] = 0;
 
-    initializeGDT32();
+    if (CUR_CPU == 0) {
+        initializeGDT32();
+        initializeLDT32();
+        initializeIDT32();
+    }
+
     loadGDT32();
-    initializeLDT32();
     loadLDT32();
-    initializeIDT32();
+    initializeTSS32(CUR_CPU);
+    loadTSS32(CUR_CPU);
     loadIDT32();
-    initializeTSS32(0);
-    loadTSS32(0);
 
-    mask_pic_8259();
-
-    printf(KERNEL_INFO, "Setup GDT,IDT, LDT and TSS done\n");
-
-    memcpy(&_kernel_pg_dir, &_master_kernel_pg_dir, PAGE_SIZE);
+    if (CUR_CPU == 0) {
+        mask_pic_8259();
+        printf(KERNEL_INFO, "Setup GDT,IDT, LDT and TSS done\n");
+    }
 
     __asm__ __volatile__(
         "movl %0, %%eax;"

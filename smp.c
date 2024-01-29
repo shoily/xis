@@ -47,11 +47,7 @@ retry:
 
     spinlock_unlock(&spinlock_smp);
 
-    loadGDT32();
-    loadLDT32();
-    initializeTSS32(smp_id);
-    loadTSS32(smp_id);
-    loadIDT32();
+    setup32();
 
     lapic_write_register(LAPIC_SPURIOUS_REG, lapic_read_register(LAPIC_SPURIOUS_REG)| 0x1ff);
     lapic_write_register(LAPIC_LVT_TIMER_REG, LAPIC_IDT_VECTOR | 0x20000); // Periodic timer on vector 32.

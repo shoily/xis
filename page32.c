@@ -91,7 +91,7 @@ void build_pagetable(u32 cpuid, pte_t **pgtable, addr_t phys_addr, addr_t start,
 void unmap_pagetable(u32 cpuid, pte_t **pgtable, addr_t start, u32 length, u32 map_flags) {
     int idx = 0;
     bool locked = map_flags & MAP_PGD_LOCKED;
-    pgd_t *pgdir = (map_flags & (MAP_USER | MAP_LOCAL_CPU)) ? GET_CPU_PGDIR(cpuid) : &_master_kernel_pg_dir;;
+    pgd_t *pgdir = (map_flags & (MAP_USER | MAP_LOCAL_CPU)) ? GET_CPU_PGDIR(cpuid) : &_master_kernel_pg_dir;
     pgd_t *pgd = pgdir + ((start >> PGD_SHIFT) & 0x3ff);
     pte_t *pte = pgtable[idx] + ((start >> PAGE_SHIFT) & 0x3ff);
     pte_t *last_pte = (pte_t*)(((long)pte + PAGE_SIZE) & PAGE_MASK);
@@ -110,7 +110,7 @@ void unmap_pagetable(u32 cpuid, pte_t **pgtable, addr_t start, u32 length, u32 m
         if (pte == last_pte) {
             idx++;
             pte = pgtable[idx];
-            last_pte = pte + (PAGE_SIZE/sizeof(pte_t));
+	        last_pte = (pte_t*)(((long)pte + PAGE_SIZE) & PAGE_MASK);
             pgd++;
 
             if (!locked)
@@ -193,16 +193,19 @@ int alloc_user_page(addr_t virt_addr, u32 length, u32 pte_flags) {
     struct kpage *page_pgtbl = NULL;
     pte_t *pgtbl[1];
     pgd_t *pgd;
-    u32 nr_pgtbls = 0, prev_nr_pgtbls = 0;
-    u32 pgd_len = ALIGN_PGD(length);
+    u32 nr_pgtbls, prev_nr_pgtbls;
+    u32 pgd_len;
     pgd_t *pgdir = GET_CPU_PGDIR(CUR_CPU);
 
     if (!virt_addr)
         return ERR_NOT_SUPPORTED;
 
+    if (virt_addr & (PAGE_SIZE-1))
+        return ERR_INVALID;
+
     length = ALIGN_PAGE(length);
 
-    if (virt_addr >= (addr_t)KERNEL_VIRT_ADDR)
+    if ((virt_addr + length) >= (addr_t)KERNEL_VIRT_ADDR)
         return ERR_INVALID;
 
     page_buf = page_alloc(NPAGES_TO_ORDER(length >> PAGE_SHIFT));
@@ -212,8 +215,10 @@ int alloc_user_page(addr_t virt_addr, u32 length, u32 pte_flags) {
     prev_nr_pgtbls = 0;
 
 retry_pgtbl_read:
-    LOCK_PGD(CUR_CPU, 0, MAP_USER | MAP_LOCAL_CPU);
+    nr_pgtbls = 0;
     addr = virt_addr;
+    pgd_len = ALIGN_PGD(length);
+    LOCK_PGD(CUR_CPU, 0, MAP_USER | MAP_LOCAL_CPU);
     while (pgd_len) {
         pgd = pgdir + ((addr >> PGD_SHIFT) & 0x3ff);
         if (!*pgd)
@@ -225,30 +230,20 @@ retry_pgtbl_read:
     if (prev_nr_pgtbls != nr_pgtbls) {
         UNLOCK_PGD(CUR_CPU, addr, MAP_USER | MAP_LOCAL_CPU);
         if (page_pgtbl) {
-            page_free_linear(page_pgtbl);
+            page_add_to_slot(page_pgtbl, NULL);
             page_pgtbl = NULL;
         }
         if (nr_pgtbls) {
             page_pgtbl = page_alloc(NPAGES_TO_ORDER(nr_pgtbls));
             if (!page_pgtbl) {
                 UNLOCK_PGD(CUR_CPU, addr, MAP_USER | MAP_LOCAL_CPU);
-                page_free_linear(page_buf);
+                page_add_to_slot(page_buf, NULL);
                 return ERR_NOMEM;
             }
         }
         prev_nr_pgtbls = nr_pgtbls;
         goto retry_pgtbl_read;
     }
-
-    spinlock_lock(&spinlock_smp);
-    smp_on_hold++;
-    spinlock_unlock(&spinlock_smp);
-
-    if (nr_pgtbls)
-        map_kernel_linear_with_pagetable((addr_t)ADDPTRS(KPAGE_TO_PHYS_ADDR(page_pgtbl), KERNEL_VIRT_ADDR),
-                                         nr_pgtbls << PAGE_SHIFT,
-                                         PTE_WRITE,
-                                         MAP_LOCAL_CPU | MAP_PGD_LOCKED);
 
     phys_addr = (addr_t)KPAGE_TO_PHYS_ADDR(page_buf);
     pgtbl_idx = 0;
@@ -261,6 +256,11 @@ retry_pgtbl_read:
             pgtbl_idx++;
         }
 
+        map_kernel_linear_with_pagetable((addr_t)pgtbl[0],
+                                         PAGE_SIZE,
+                                         PTE_WRITE,
+                                         MAP_LOCAL_CPU | MAP_PGD_LOCKED);
+
         build_pagetable(CUR_CPU,
                         pgtbl,
                         phys_addr,
@@ -270,21 +270,15 @@ retry_pgtbl_read:
                         PTE_PRESENT | PTE_USER | pte_flags,
                         MAP_USER | MAP_PGD_LOCKED);
 
+        unmap_kernel_with_pagetable((addr_t)pgtbl[0],
+                                    PAGE_SIZE,
+                                    MAP_LOCAL_CPU | MAP_PGD_LOCKED);
+
         virt_addr = ADDPTRS(virt_addr, PAGE_SIZE);
         phys_addr = ADDPTRS(phys_addr, PAGE_SIZE);
         length -= PAGE_SIZE;
     }
-
-    if (nr_pgtbls)
-        unmap_kernel_with_pagetable((addr_t)ADDPTRS(KPAGE_TO_PHYS_ADDR(page_pgtbl), KERNEL_VIRT_ADDR),
-                                   nr_pgtbls << PAGE_SHIFT,
-                                   MAP_LOCAL_CPU | MAP_PGD_LOCKED);
-
     UNLOCK_PGD(CUR_CPU, 0, MAP_USER | MAP_LOCAL_CPU);
-
-    spinlock_lock(&spinlock_smp);
-    smp_on_hold--;
-    spinlock_unlock(&spinlock_smp);
 
     return 0;
 }
