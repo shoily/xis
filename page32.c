@@ -143,6 +143,7 @@ void map_kernel_with_pagetable(addr_t virt_addr, addr_t phys_addr, u32 length, u
 
     end_virt_addr = ALIGN_PAGE(virt_addr + length);
     virt_addr = virt_addr & PAGE_MASK;
+    phys_addr = phys_addr & PAGE_MASK;
 
     pte = (pte_t*)ADDPTRS(&_kernel_pg_table_0, (((VIRT_TO_PHYS_ADDR_LINEAR(virt_addr) >> PGD_SHIFT) & 0x3ff) << PAGE_SHIFT));
     pte += (((long)(virt_addr) >> PAGE_SHIFT) & 0x3ff);

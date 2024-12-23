@@ -12,8 +12,26 @@
     .code32
     .text
 
-    .globl common_trap_handler
+    .globl trap_handler_0
+    .globl trap_handler_1
+    .globl trap_handler_2
+    .globl trap_handler_3
+    .globl trap_handler_4
+    .globl trap_handler_5
+    .globl trap_handler_6
+    .globl trap_handler_7
+    .globl trap_handler_8
+    .globl trap_handler_9
+    .globl trap_handler_10
+    .globl trap_handler_11
+    .globl trap_handler_12
+    .globl trap_handler_13
     .globl trap_handler_14
+    .globl trap_handler_16
+    .globl trap_handler_17
+    .globl trap_handler_18
+    .globl trap_handler_19
+    .globl trap_handler_30
     
     .globl sys_call_handler_128
 
@@ -34,31 +52,54 @@
     .globl irq_handler_14
     .globl irq_handler_15
 
-    // macro for defining IRQ handler using PIC
-    .macro DEFINE_IRQ_HANDLER irqn
-    
-    irq_handler_\irqn:
-    pushl $\irqn
+    .macro PROLOGUE trap_nr
+
     pusha
+
+    movl %esp, %eax
+    movl $0, -4(%eax)
+    movl $0, -8(%eax)
+    movl $0, -12(%eax)
+    movl $0, -16(%eax)
 
     push %ds
     push %es
     push %fs
     push %gs
 
-    pushl $0
+	pushl $\trap_nr
 
-    movl $0x28, %eax 
+    movl %esp, %ebp
+    // reg frame
+    push %ebp
+
+    // cleanup segment registers
+    movl $0x40, %eax
     movl %eax, %ds
     movl %eax, %es
     movl %eax, %fs
+
+    // CUR_CPU on gs register
+    xorl %eax, %eax
     movl %eax, %gs
+    cmpl %eax, lapic_present
+    je 1f
+    pushl $0x20
+    call lapic_read_register
+    shr $24, %eax
 
-    sti
+    // pops off input parameter
+    addl $4, %esp
+    movl %eax, %gs
+1:
+    // reg_frame is already pushed into stack
+    // should call handler
 
-    movl %esp, %ebp
-    push %ebp
-    call common_interrupt_handler
+    .endm
+
+    .macro EPILOGUE
+
+    // adjusted for reg frame and trap_nr
     addl $8, %esp
 
     pop %gs
@@ -68,10 +109,24 @@
 
     popa
 
+    // adjusted for code_nr
     addl $4, %esp
 
     iret
+
+    .endm
+
+    // macro for defining IRQ handler using PIC
+    .macro DEFINE_IRQ_HANDLER irqn
     
+    irq_handler_\irqn:
+    // code_nr
+    pushl $\irqn
+
+    PROLOGUE 0
+    call common_interrupt_handler
+    EPILOGUE
+
     .endm
 
 
@@ -80,78 +135,34 @@
 
     sys_call_handler_\syscallnr:
     pushl $\syscallnr
-    pusha
 
-    push %ds
-    push %es
-    push %fs
-    push %gs
-
-    pushl $0
-
-    movl %esp, %ebp
-    
-    movl $0x28, %eax 
-    movl %eax, %ds
-    movl %eax, %es
-    movl %eax, %fs
-    movl %eax, %gs
-
-    push %ebp
+    PROLOGUE 0
     call common_sys_call_handler
-    addl $8, %esp
+    EPILOGUE
 
-    pop %gs
-    pop %fs
-    pop %es
-    pop %ds
-
-    popa
-
-    addl $4, %esp
-
-    iret
-    
     .endm
 
     // macro for defining trap handler
     .macro DEFINE_TRAP_HANDLER trapnr
     trap_handler_\trapnr:
-    cli
-    pusha
 
-    push %ds
-    push %es
-    push %fs
-    push %gs
-
-    pushl $\trapnr
-
-    movl %esp, %ebp
-
-    movl $0x28, %eax
-    movl %eax, %ds
-    movl %eax, %es
-    movl %eax, %fs
-    movl %eax, %gs
-
-    push %ebp
+    PROLOGUE \trapnr
     call trap_handler
-    addl $8, %esp
-
-    pop %gs
-    pop %fs
-    pop %es
-    pop %ds
-
-    popa
-    addl $4, %esp
-    sti
-
-    iret
+    EPILOGUE
 
     .endm
 
+    // macro for defining trap handler
+    .macro DEFINE_TRAP_NO_CODE_HANDLER trapnr
+    trap_handler_\trapnr:
+    // code_nr
+    pushl $0
+
+    PROLOGUE 0
+    call trap_handler
+    EPILOGUE
+
+    .endm
 
     // define IRQ handlers 0-15
     DEFINE_IRQ_HANDLER 0
@@ -175,37 +186,23 @@
     DEFINE_SYS_CALL_HANDLER 128
 
     // define trap handler
+    DEFINE_TRAP_NO_CODE_HANDLER 0
+    DEFINE_TRAP_NO_CODE_HANDLER 1
+    DEFINE_TRAP_NO_CODE_HANDLER 2
+    DEFINE_TRAP_NO_CODE_HANDLER 3
+    DEFINE_TRAP_NO_CODE_HANDLER 4
+    DEFINE_TRAP_NO_CODE_HANDLER 5
+    DEFINE_TRAP_NO_CODE_HANDLER 6
+    DEFINE_TRAP_NO_CODE_HANDLER 7
+    DEFINE_TRAP_HANDLER 8
+    DEFINE_TRAP_NO_CODE_HANDLER 9
+    DEFINE_TRAP_HANDLER 10
+    DEFINE_TRAP_HANDLER 11
+    DEFINE_TRAP_HANDLER 12
+    DEFINE_TRAP_HANDLER 13
     DEFINE_TRAP_HANDLER 14
-
-    
-common_trap_handler:
-    cli
-    pusha
-
-    push %ds
-    push %es
-    push %fs
-    push %gs
-
-    pushl $0
-    movl %esp, %ebp
-
-    movl $0x28, %eax 
-    movl %eax, %ds
-    movl %eax, %es
-    movl %eax, %fs
-    movl %eax, %gs
-
-    push %ebp
-    call trap_handler
-    addl $8, %esp
-
-    pop %gs
-    pop %fs
-    pop %es
-    pop %ds
-    
-    popa
-    sti
-
-    iret
+    DEFINE_TRAP_NO_CODE_HANDLER 16
+    DEFINE_TRAP_NO_CODE_HANDLER 17
+    DEFINE_TRAP_HANDLER 18
+    DEFINE_TRAP_NO_CODE_HANDLER 19
+    DEFINE_TRAP_HANDLER 30

@@ -41,7 +41,7 @@
 
 void init_lapic();
 void lapic_switch(bool enable);
-int lapic_read_register(int lapic_register);
+int __attribute__((regparm(0))) lapic_read_register(int lapic_register);
 void lapic_write_register(int lapic_register, int value);
 void lapic_enable_timer();
 

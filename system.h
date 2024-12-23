@@ -58,7 +58,15 @@
 */
 extern int lapic_present;
 
-#define CUR_CPU (lapic_present ? (lapic_read_register(LAPIC_ID_REG) >> 24) : 0)
+#define CUR_CPU \
+    ({                \
+        int _gs_register;                 \
+        __asm__ __volatile__("movl %%gs, %0;"   \
+                             : "=r"(_gs_register)	\
+                             :						\
+                             :);					\
+        _gs_register;                               \
+    })                                              \
 
 struct e820_map {
     u64 base;

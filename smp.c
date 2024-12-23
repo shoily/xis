@@ -49,12 +49,16 @@ retry:
 
     setup32();
 
+    // avoid page fault on interrupt/trap handler
+    // on accessing lapic_read_register to get CUR_CPU
+    map_kernel_with_pagetable(lapic_base_register, lapic_base_register, PAGE_SIZE, PTE_WRITE, 0);
+
     lapic_write_register(LAPIC_SPURIOUS_REG, lapic_read_register(LAPIC_SPURIOUS_REG)| 0x1ff);
     lapic_write_register(LAPIC_LVT_TIMER_REG, LAPIC_IDT_VECTOR | 0x20000); // Periodic timer on vector 32.
     lapic_write_register(LAPIC_DIVIDE_CONFIGURATION_REG, LAPIC_DIVIDE_CONFIG_VALUE); // Divide by 128
     lapic_write_register(LAPIC_INITIAL_COUNTER_REG, LAPIC_COUNTER_VALUE);
 
-    STI;
+    //STI;
     initialize_usermode();
     switch_to_um();
 }
@@ -112,4 +116,6 @@ void smp_start() {
 
     printf(KERNEL_INFO, "Number of APs: %d ", smp_nums);
     printf(KERNEL_INFO, "SMP bits: %x\n", smp_bits);
+
+	STI;
 }

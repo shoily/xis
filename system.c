@@ -199,16 +199,15 @@ void pit_wait(int cycles) {
                          "incl %2;"            // loop count - for debugging purpose
                          "jmp 1b;"
                          "1:"
+                         "cli;"
                          : "=r"(counter), "=r"(status_reg)
                          : "0"(cycles)
                          : "%eax", "cc", "memory"
                          );
 
 #ifdef DEBUG
-    CLI;
     printf(KERNEL_DEBUG, "status_reg: %x", status_reg);
     printf(KERNEL_DEBUG, "counter: %x\n", counter);
-    STI;
 #endif
 }
 

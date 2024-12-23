@@ -18,6 +18,7 @@
 #include "system.h"
 #include "interrupt.h"
 #include "page32.h"
+#include "memory.h"
 
 extern int ebda;
 extern struct ioapic *ioapic;
@@ -90,7 +91,7 @@ typedef struct _APIC_TABLE {
     }__attribute__((packed)) info;
 }__attribute__((packed)) APIC_TABLE;
 
-#define RSDPTR_STR "RSD PTR"
+#define RSDPTR_STR "RSD PTR "
 #define APIC_STR "APIC"
 #define FACP_STR "FACP"
 
@@ -123,9 +124,8 @@ bool acpi_find_rsdp() {
         }
 
         if (!strncmp(((RSD*)cur)->signature, RSDPTR_STR, strlen(RSDPTR_STR))) {
-
             rsdp = (RSD*)cur;
-            printf(KERNEL_INFO, "RSDP: %p\n", (long)rsdp-KERNEL_VIRT_ADDR);
+            printf(KERNEL_INFO, ", RSDT: %x, phase: %d ", rsdp->rsdt_address, phase);
             return true;
         }
 
@@ -207,6 +207,8 @@ void acpi_process_table(ACPI_TABLE *acpi_table) {
     }
 }
 
+extern addr_t _kernel_pg_table_0;
+
 void acpi_init() {
 
     rsdp = NULL;
@@ -217,12 +219,23 @@ void acpi_init() {
         return;
     }
 
-    rsdt = (ACPI_TABLE*)ADDPTRS(rsdp->rsdt_address, KERNEL_VIRT_ADDR);
+    if (rsdp->rsdt_address >= KERNEL_VIRT_ADDR) {
+        rsdt = (ACPI_TABLE*)rsdp->rsdt_address;
+        map_kernel_with_pagetable((addr_t)rsdt, (addr_t)rsdt, sizeof(ACPI_TABLE), PTE_PRESENT, 0);
+    } else {
+        rsdt = (ACPI_TABLE*)ADDPTRS(rsdp->rsdt_address, KERNEL_VIRT_ADDR);
+        map_kernel_linear_with_pagetable((addr_t)rsdt, sizeof(ACPI_TABLE), PTE_PRESENT, 0);
+    }
+
     printf(KERNEL_INFO, "RSDT: %p %p ", (long)rsdt, (long)rsdp->rsdt_address);
-    map_kernel_linear_with_pagetable((addr_t)rsdt, sizeof(ACPI_TABLE), PTE_PRESENT, 0);
-    map_kernel_linear_with_pagetable((addr_t)rsdt, rsdt->length, PTE_PRESENT, 0);
-    printf(KERNEL_INFO, "RSDT: %p ", (long)rsdt-KERNEL_VIRT_ADDR);
-    printf(KERNEL_INFO, "RSDT Length: %d, %d ", rsdt->length, sizeof(ACPI_TABLE));
+
+    printf(KERNEL_INFO, " RSDT Length: %d %d ", rsdt->length, sizeof(ACPI_TABLE));
+    printf(KERNEL_INFO, "GS register: %d, %d\n", CUR_CPU, lapic_present);
+
+    if (rsdp->rsdt_address >= KERNEL_VIRT_ADDR)
+        map_kernel_with_pagetable((addr_t)rsdt, (addr_t)rsdt, rsdt->length, PTE_PRESENT, 0);
+    else
+        map_kernel_linear_with_pagetable((addr_t)rsdt, rsdt->length, PTE_PRESENT, 0);
 
     num_acpi_tables = (rsdt->length - sizeof(ACPI_TABLE)) / sizeof(void*);
     acpi_tables = (ACPI_TABLE**)ADDPTRS(rsdt, sizeof(ACPI_TABLE));

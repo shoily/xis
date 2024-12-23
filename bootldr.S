@@ -107,7 +107,6 @@ a20_line:
     cli
     movb $0xdd, %al
     outb %al, $0x64
-    sti
 
     // read kernel from second sector    
     xorw %ax, %ax
@@ -119,8 +118,6 @@ a20_line:
     movw $dap, %si
     xorw %ax, %ax
     movw %ax, 4(%si)
-
-
 
     movw $KERNEL_SECTORS, %ax
     
@@ -159,7 +156,6 @@ a20_line:
     movw %ax, %ds
     movw %ax, %es
     movw %ax, %ss
-    sti
 
     // resets disk system
     int $0x13
@@ -203,8 +199,6 @@ protectedmodeaddress:
     movl %eax, %ds
     movl %eax, %es
     movl %eax, %ss
-    movl %eax, %fs
-    movl %eax, %gs
 
     // initialize protected mode stack
     movl $PROTECTED_MODE_STACK, %eax
@@ -253,7 +247,7 @@ code_seg_addr:
     .byte 0
 
 data_seg_addr:   
-// offset 0x10 - ds, ss, es, fs, and gs should point to this descriptor
+// offset 0x10 - ds, ss, and es should point to this descriptor
     .word 0xFFFF
     .word 0
     .byte 0

@@ -106,7 +106,8 @@ highaddress:
     // invalidate TLB for identity mapping
     movl %ebx, %ecx
     shrl $PAGE_SHIFT, %ecx
-    movl %eax, 0
+    xorl %eax, %eax
+
 1:
     invlpg (%eax)
     addl $PAGE_SIZE, %eax
@@ -118,13 +119,15 @@ highaddress:
     andl $PGD_MASK, %ecx
     shrl $PGD_SHIFT, %ecx
 
-    movl %ecx, %eax
-    movl $0, %eax
+    xorl %eax, %eax
     movl $_master_kernel_pg_dir, %edi
     cld
 1:
     stosl
     loop 1b
+
+    // APIC ID 0 to gs
+    movl %eax, %gs
 
     // setting up kernel mode stack in high address
     movl $(_kernel_stack_0_start), %esp

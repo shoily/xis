@@ -74,7 +74,6 @@ void interrupts_enable() {
         init_pic_8259();
         init_pit_frequency();
     }
-    STI;
     device_enable_interrupts();
 }
 

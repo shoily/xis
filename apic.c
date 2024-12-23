@@ -22,7 +22,7 @@ int lapic_id;
 
 extern addr_t _kernel_pg_dir;
 
-int lapic_read_register(int lapic_register) {
+int __attribute__((regparm(0))) lapic_read_register(int lapic_register) {
     
     return *((int*)(lapic_base_register+lapic_register));
 }
@@ -44,11 +44,9 @@ void calibrate_lapic_timer() {
     lapic_calibration_mode = true;
     lapic_write_register(LAPIC_INITIAL_COUNTER_REG, LAPIC_COUNTER_VALUE);
     pit_wait_ms(1);
-    CLI;
     lapic_write_register(LAPIC_INITIAL_COUNTER_REG, 0);
     lapic_calibration_mode = false;
     lapic_timer_enabled = true;
-    STI;
     lapic_write_register(LAPIC_INITIAL_COUNTER_REG, LAPIC_COUNTER_VALUE);
 }
 
@@ -78,8 +76,6 @@ void init_lapic() {
 
     map_kernel_with_pagetable(lapic_base_register, lapic_base_register, PAGE_SIZE, PTE_WRITE, 0);
 
-    lapic_present = local_lapic_present;
-
     printf(KERNEL_INFO, "Local APIC address: %p ", eax);
 
     lapic_id = lapic_read_register(LAPIC_ID_REG) >> 24;
@@ -89,6 +85,7 @@ void init_lapic() {
     // enable receiving interrupt
     lapic_write_register(LAPIC_SPURIOUS_REG, lapic_read_register(LAPIC_SPURIOUS_REG)| 0x100);
 
+    lapic_present = local_lapic_present;
     calibrate_lapic_timer();
 }
 

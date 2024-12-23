@@ -57,6 +57,9 @@ protectedmodeaddress:
     shrl $24, %eax
     movl %eax, %ecx
 
+    // GS register holds APIC ID
+    movl %ecx, %gs
+
     // calculate start of kernel mode stack for this processor
     movl $KERNEL_STACK_SIZE, %ebx
     mull %ebx

@@ -57,8 +57,27 @@ extern int lapic_base_register;
 
 extern struct ring_buffer ring_buffer_kbd;
 
-void common_trap_handler();
+void trap_handler_0();
+void trap_handler_1();
+void trap_handler_2();
+void trap_handler_3();
+void trap_handler_4();
+void trap_handler_5();
+void trap_handler_6();
+void trap_handler_7();
+void trap_handler_8();
+void trap_handler_9();
+void trap_handler_10();
+void trap_handler_11();
+void trap_handler_12();
+void trap_handler_13();
 void trap_handler_14();
+void trap_handler_16();
+void trap_handler_17();
+void trap_handler_18();
+void trap_handler_19();
+void trap_handler_30();
+
 void sys_call_handler_128();
 
 void irq_handler_0();
@@ -83,7 +102,7 @@ void irq_handler_15();
 __attribute__((regparm(0))) void trap_handler(struct regs_frame *rf) {
 
 #ifdef DEBUG_TRAP
-    printf(KERNEL_DEBUG, "Trap handler\ngs: %x fs: %x es: %x ds: %x code_nr: %x cs: %x eip: %x ss: %x esp: %x eflags: %x ", rf->gs, rf->fs, rf->es, rf->ds, rf->code_nr, rf->cs, rf->eip, rf->ss, rf->esp, rf->eflags);
+    printf(KERNEL_DEBUG, "Trap handler\ngs: %x fs: %x es: %x ds: %x code_nr: %x cs: %x eip: %x ss: %x esp: %x eflags: %x trap: %d ", rf->gs, rf->fs, rf->es, rf->ds, rf->code_nr, rf->cs, rf->eip, rf->ss, rf->esp, rf->eflags, rf->trap_nr);
 
     if (rf->trap_nr == 14) {
         u32 cr2;
@@ -177,7 +196,10 @@ void sendEOI(int intno) {
     }
 }
 
+int _gs_count = 0;
+int _gs_timer = 0;
 __attribute__((regparm(0))) void common_interrupt_handler(struct regs_frame *rf) {
+
 
     if (rf->code_nr == 0) {
 
@@ -212,10 +234,12 @@ __attribute__((regparm(0))) void common_interrupt_handler(struct regs_frame *rf)
     sendEOI(rf->code_nr);
 }
 
+//#define DEBUG_SYSCALL
 __attribute__((regparm(0))) void common_sys_call_handler(struct regs_frame *rf) {
 
 #ifdef DEBUG_SYSCALL
     printf(KERNEL_DEBUG, "System call: %x\n", rf->code_nr | CUR_CPU, 16);
+    //printf(KERNEL_DEBUG, "\nsyscall gs: %x fs: %x es: %x ds: %x code_nr: %x cs: %x eip: %x ss: %x esp: %x eflags: %x trap: %d ", rf->gs, rf->fs, rf->es, rf->ds, rf->code_nr, rf->cs, rf->eip, rf->ss, rf->esp, rf->eflags, rf->trap_nr);
 #else
     UNUSED(rf);
 #endif
@@ -266,14 +290,12 @@ void loadGDT32() {
                          "lgdt (%%eax);"
                          "ljmpl %1, $reinitsegs;"
                          "reinitsegs:;"
-                         "movl %2, %%eax;"
-                         "movl %%eax, %%ds;"
-                         "movl %%eax, %%es;"
-                         "movl %%eax, %%ss;"
-                         "movl %%eax, %%fs;"
-                         "movl %%eax, %%gs;"
+                         "movl %2, %%ds;"
+                         "movl %2, %%es;"
+                         "movl %2, %%ss;"
+                         "movl %2, %%fs;"
                          :
-                         : "m" (gdt_desc), "i" (KERNEL_CODE_SEG), "i" (KERNEL_DATA_SEG)
+                         : "m" (gdt_desc), "i" (KERNEL_CODE_SEG), "q" (KERNEL_DATA_SEG)
                          : "%eax"
                          );
 }
@@ -324,20 +346,26 @@ void initializeIDT32() {
     SET_INTERRUPT_GATE(idt, 46, irq_handler_14);
     SET_INTERRUPT_GATE(idt, 47, irq_handler_15);
 
-    SET_TRAP_GATE(idt, 0, common_trap_handler);
-    SET_TRAP_GATE(idt, 1, common_trap_handler);
-    SET_TRAP_GATE(idt, 2, common_trap_handler);
-    SET_TRAP_GATE(idt, 4, common_trap_handler);
-    SET_TRAP_GATE(idt, 5, common_trap_handler);
-    SET_TRAP_GATE(idt, 6, common_trap_handler);
-    SET_TRAP_GATE(idt, 7, common_trap_handler);
-    SET_TRAP_GATE(idt, 8, common_trap_handler);
-    SET_TRAP_GATE(idt, 9, common_trap_handler);
-    SET_TRAP_GATE(idt, 10, common_trap_handler);
-    SET_TRAP_GATE(idt, 11, common_trap_handler);
-    SET_TRAP_GATE(idt, 12, common_trap_handler);
-    SET_TRAP_GATE(idt, 13, common_trap_handler);
+    SET_TRAP_GATE(idt, 0, trap_handler_0);
+    SET_TRAP_GATE(idt, 1, trap_handler_1);
+    SET_TRAP_GATE(idt, 2, trap_handler_2);
+    SET_TRAP_GATE(idt, 3, trap_handler_3);
+    SET_TRAP_GATE(idt, 4, trap_handler_4);
+    SET_TRAP_GATE(idt, 5, trap_handler_5);
+    SET_TRAP_GATE(idt, 6, trap_handler_6);
+    SET_TRAP_GATE(idt, 7, trap_handler_7);
+    SET_TRAP_GATE(idt, 8, trap_handler_8);
+    SET_TRAP_GATE(idt, 9, trap_handler_9);
+    SET_TRAP_GATE(idt, 10, trap_handler_10);
+    SET_TRAP_GATE(idt, 11, trap_handler_11);
+    SET_TRAP_GATE(idt, 12, trap_handler_12);
+    SET_TRAP_GATE(idt, 13, trap_handler_13);
     SET_TRAP_GATE(idt, 14, trap_handler_14);
+    SET_TRAP_GATE(idt, 16, trap_handler_16);
+    SET_TRAP_GATE(idt, 17, trap_handler_17);
+    SET_TRAP_GATE(idt, 18, trap_handler_18);
+    SET_TRAP_GATE(idt, 19, trap_handler_19);
+    SET_TRAP_GATE(idt, 30, trap_handler_30);
 
     SET_TRAP_GATE(idt, 128, sys_call_handler_128);
 }
